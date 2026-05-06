@@ -30,7 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (keep secrets out of git)
+.env
 .env*.local
 
 # typescript
