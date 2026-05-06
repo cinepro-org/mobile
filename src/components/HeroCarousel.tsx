@@ -22,7 +22,7 @@ export const HeroCarousel = memo(function HeroCarousel({ heroHeight, items, over
   const opacity = useSharedValue(1);
 
   const slides = useMemo(() => items.slice(0, 6), [items]);
-  const active = slides[index] ?? slides[0];
+  const active = slides.length ? slides[index % slides.length] : undefined;
 
   useEffect(() => {
     if (!slides.length) return;
@@ -32,11 +32,17 @@ export const HeroCarousel = memo(function HeroCarousel({ heroHeight, items, over
       opacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
     }, 8500);
     return () => clearInterval(id);
-  }, [opacity, slides.length]);
+  }, [opacity, slides]);
+
+  useEffect(() => {
+    if (!slides.length) {
+      setIndex(0);
+      return;
+    }
+    setIndex((i) => i % slides.length);
+  }, [slides]);
 
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-
-  const backdropUri = tmdbImg(active.backdropPath ?? active.posterPath, 'w1280');
 
   if (!active) {
     return (
@@ -45,6 +51,8 @@ export const HeroCarousel = memo(function HeroCarousel({ heroHeight, items, over
       </View>
     );
   }
+
+  const backdropUri = tmdbImg(active.backdropPath ?? active.posterPath, 'w1280');
 
   return (
     <View style={{ height: heroHeight, paddingHorizontal: overscanX }} className="relative">
