@@ -39,8 +39,50 @@ export function isPlayableType(type: OmssStreamType): boolean {
   return type === 'hls' || type === 'dash' || type === 'http' || type === 'mp4' || type === 'webm';
 }
 
+function isLoopbackHttpHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
+}
+
+function parseConfiguredBase(base: string): URL | null {
+  try {
+    return new URL(base.endsWith('/') ? base : `${base}/`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * OMSS sometimes returns absolute proxy URLs using the Core machine's loopback
+ * (e.g. http://localhost:3000/v1/proxy?...). Rewrite them to match Settings:
+ * - Same scheme/host as the configured base (works for https://domain.com with no :443)
+ * - Same path prefix when Core sits behind a reverse proxy (e.g. https://domain.com/omss)
+ */
 export function resolveProxyUrl(proxyPathOrUrl: string): string {
-  if (proxyPathOrUrl.startsWith('http')) return proxyPathOrUrl;
-  const path = proxyPathOrUrl.startsWith('/') ? proxyPathOrUrl : `/${proxyPathOrUrl}`;
-  return `${getOmssBaseUrl()}${path}`;
+  const raw = proxyPathOrUrl.trim();
+  const base = getOmssBaseUrl().trim();
+  if (!raw) return raw;
+
+  if (!raw.startsWith('http')) {
+    const path = raw.startsWith('/') ? raw : `/${raw}`;
+    return `${base}${path}`;
+  }
+
+  try {
+    const target = new URL(raw);
+    if (!isLoopbackHttpHost(target.hostname)) return raw;
+    const configured = parseConfiguredBase(base);
+    if (!configured) return raw;
+
+    target.protocol = configured.protocol;
+    target.host = configured.host;
+
+    let basePath = configured.pathname;
+    if (basePath.endsWith('/')) basePath = basePath.slice(0, -1);
+    target.pathname = `${basePath}${target.pathname}`;
+
+    return target.href;
+  } catch {
+    return raw;
+  }
 }
