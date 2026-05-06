@@ -147,26 +147,36 @@ export function HomeScreen() {
 
       {genreChips.length ? (
         <View style={{ marginTop: sectionGap * 2.5, paddingHorizontal: hp }}>
-          <Text className="text-white/40 text-[11px] font-bold tracking-[0.2em] mb-2">DISCOVER</Text>
-          <Text className="text-white text-xl font-bold mb-4">Browse by genre</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 8 }}>
-            {genreChips.map((item: TmdbGenre) => (
-              <FocusSurface
-                key={item.id}
-                className="rounded-full bg-white/[0.07] border border-white/12 px-5 py-2.5 active:bg-white/12"
-                onPress={() =>
-                  navigation.navigate('Genre', {
-                    genreId: item.id,
-                    genreName: item.name,
-                    mediaType: 'movie',
-                  })
-                }
-                accessibilityLabel={`Genre ${item.name}`}
-              >
-                <Text className="text-white text-sm font-semibold">{item.name}</Text>
-              </FocusSurface>
-            ))}
-          </ScrollView>
+          <View className="rounded-3xl border border-white/10 bg-[#12131c] p-4 pb-5 overflow-hidden">
+            <Text className="text-white/40 text-[11px] font-bold tracking-[0.2em] mb-2">DISCOVER</Text>
+            <Text className="text-white text-xl font-bold mb-4">Browse by genre</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 4, alignItems: 'center' }}
+            >
+              {genreChips.map((item: TmdbGenre, index: number) => (
+                <React.Fragment key={item.id}>
+                  {index > 0 ? (
+                    <View className="w-px h-7 bg-white/18 self-center mx-3" accessibilityElementsHidden />
+                  ) : null}
+                  <FocusSurface
+                    className="rounded-full bg-white/[0.08] border border-white/14 px-5 py-2.5 active:bg-white/14"
+                    onPress={() =>
+                      navigation.navigate('Genre', {
+                        genreId: item.id,
+                        genreName: item.name,
+                        mediaType: 'movie',
+                      })
+                    }
+                    accessibilityLabel={`Genre ${item.name}`}
+                  >
+                    <Text className="text-white text-sm font-semibold">{item.name}</Text>
+                  </FocusSurface>
+                </React.Fragment>
+              ))}
+            </ScrollView>
+          </View>
         </View>
       ) : null}
 

@@ -118,16 +118,19 @@ export const HeroCarousel = memo(function HeroCarousel({
               {active.subtitle ? (
                 <Text className="text-white/65 text-sm mt-1.5">{active.subtitle}</Text>
               ) : null}
-              <View className="flex-row items-center gap-3 mt-4">
+              <View className="flex-row items-center mt-4">
                 {onOpenActive ? (
-                  <FocusSurface
-                    className="rounded-full bg-white flex-row items-center gap-2 px-5 py-2.5"
-                    onPress={() => onOpenActive(active)}
-                    accessibilityLabel={`Open ${active.title}`}
-                  >
-                    <Ionicons name="information-circle-outline" color="#07080d" size={18} />
-                    <Text className="text-ink font-bold text-sm">Details</Text>
-                  </FocusSurface>
+                  <>
+                    <FocusSurface
+                      className="rounded-full bg-white flex-row items-center gap-2 px-5 py-2.5"
+                      onPress={() => onOpenActive(active)}
+                      accessibilityLabel={`Open ${active.title}`}
+                    >
+                      <Ionicons name="information-circle-outline" color="#07080d" size={18} />
+                      <Text className="text-ink font-bold text-sm">Details</Text>
+                    </FocusSurface>
+                    <View className="w-px h-9 bg-white/25 self-center mx-3" accessibilityElementsHidden />
+                  </>
                 ) : null}
                 <View className="flex-row items-center gap-1.5">
                   {slides.map((_, i) => (
