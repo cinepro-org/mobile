@@ -8,13 +8,35 @@ import {
 } from '@/api/types/omss';
 import { getOmssBaseUrl } from '@/api/runtimeConfig';
 
+/** Catches typos like `http://l192.168.x.x` that break `fetch` with "Failed to parse URL". */
+function looksLikeExtraCharBeforeIpv4(hostname: string): boolean {
+  return /^l\d+(?:\.\d+){3}$/i.test(hostname);
+}
+
 function joinUrl(path: string): string {
   const base = getOmssBaseUrl().trim();
   if (!base) {
     throw new OmssHttpError('Configure your CinePro Core (OMSS) URL in Settings.', 400);
   }
+  const normalizedBase = base.replace(/\/+$/, '');
   const p = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${p}`;
+  const joined = `${normalizedBase}${p}`;
+  try {
+    const u = new URL(joined);
+    if (looksLikeExtraCharBeforeIpv4(u.hostname)) {
+      throw new OmssHttpError(
+        'Invalid Core URL: remove the stray letter before the IP (use 192.168… not l192.168…).',
+        400
+      );
+    }
+  } catch (e) {
+    if (e instanceof OmssHttpError) throw e;
+    throw new OmssHttpError(
+      'Invalid Core URL. Check spelling and use a full URL like http://192.168.0.10:3000',
+      400
+    );
+  }
+  return joined;
 }
 
 async function parseJsonSafe<T>(res: Response): Promise<T | undefined> {

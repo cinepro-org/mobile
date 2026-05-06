@@ -10,22 +10,16 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { OnboardingScreen } from '@/screens/OnboardingScreen';
 import { queryClient } from '@/api/queryClient';
 import { useSettingsStore } from '@/store/settingsStore';
-import { setOmssBaseUrl } from '@/api/runtimeConfig';
 
 function AppShell() {
   const [hydrated, setHydrated] = useState(() => useSettingsStore.persist.hasHydrated());
   const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
-  const cineproBaseUrl = useSettingsStore((s) => s.cineproBaseUrl);
 
   useEffect(() => {
     const unsub = useSettingsStore.persist.onFinishHydration(() => setHydrated(true));
     setHydrated(useSettingsStore.persist.hasHydrated());
     return unsub;
   }, []);
-
-  useEffect(() => {
-    setOmssBaseUrl(cineproBaseUrl);
-  }, [cineproBaseUrl]);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync('#07080d');

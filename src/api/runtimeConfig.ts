@@ -1,9 +1,9 @@
-let activeBase = '';
+import { useSettingsStore } from '@/store/settingsStore';
 
+/** Always reads the persisted Core URL so fetches never race App mount / useEffect. */
 export function getOmssBaseUrl(): string {
-  return activeBase;
+  return useSettingsStore.getState().cineproBaseUrl.trim();
 }
 
-export function setOmssBaseUrl(url: string): void {
-  activeBase = url.trim().replace(/\/$/, '');
-}
+/** @deprecated No longer needed; URL lives in settings store only. */
+export function setOmssBaseUrl(_url: string): void {}

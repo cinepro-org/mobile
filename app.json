@@ -14,10 +14,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cinestream.app"
+      "bundleIdentifier": "com.cinestream.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "com.cinestream.app",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#07080d"
@@ -29,6 +35,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["react-native-video"]
+    "plugins": ["react-native-video", "./plugins/withAndroidCleartextTraffic.js"]
   }
 }

@@ -6,10 +6,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useSettingsStore } from '@/store/settingsStore';
-import { setOmssBaseUrl } from '@/api/runtimeConfig';
 import { CineProApi } from '@/api/cineproClient';
 import { qk } from '@/api/queryKeys';
-import type { OmssHealthResponse } from '@/api/types/omss';
+import { OmssHttpError, type OmssHealthResponse } from '@/api/types/omss';
 import { CINEPRO_ENV_BASE_URL } from '@/utils/env';
 import { FocusSurface } from '@/tv/FocusSurface';
 
@@ -59,10 +58,11 @@ export function SettingsScreen() {
   const defaultPlaybackRate = useSettingsStore((s) => s.defaultPlaybackRate);
   const setRate = useSettingsStore((s) => s.setDefaultPlaybackRate);
 
+  const baseKey = cineproBaseUrl.trim();
   const health = useQuery({
-    queryKey: qk.health,
+    queryKey: [...qk.health, baseKey] as const,
     queryFn: () => CineProApi.health(),
-    enabled: !!cineproBaseUrl.trim(),
+    enabled: !!baseKey,
     retry: 1,
     staleTime: 30_000,
   });
@@ -76,6 +76,15 @@ export function SettingsScreen() {
   const coreDetails = useMemo(() => {
     const h = health.data;
     const failed = !health.isFetching && health.isError;
+    const err = health.error;
+    const errorDetail =
+      err instanceof OmssHttpError
+        ? `${err.message} (${err.status})`
+        : err instanceof Error
+          ? err.message
+          : health.isError
+            ? 'Request failed'
+            : null;
     const primaryLine = health.isFetching
       ? 'Checking server…'
       : h
@@ -88,8 +97,8 @@ export function SettingsScreen() {
           .map((k) => `${k}: ${h.endpoints![k]}`)
       : [];
 
-    return { h, failed, primaryLine, endpoints };
-  }, [health.data, health.isError, health.isFetching]);
+    return { h, failed, primaryLine, endpoints, errorDetail };
+  }, [health.data, health.error, health.isError, health.isFetching]);
 
   const iconBoxBorder =
     coreDetails.h?.status === 'operational'
@@ -153,6 +162,11 @@ export function SettingsScreen() {
         <View className="flex-1 min-w-0">
           <Text className="text-white font-semibold text-[15px]">Open Core (OMSS)</Text>
           <Text className="text-white/55 text-xs mt-1 leading-4">{coreDetails.primaryLine}</Text>
+          {coreDetails.failed && coreDetails.errorDetail ? (
+            <Text className="text-amber-200/90 text-[11px] mt-2 leading-4 font-mono" selectable>
+              {coreDetails.errorDetail}
+            </Text>
+          ) : null}
           {coreDetails.h?.status ? (
             <Text className="text-white/45 text-[11px] mt-2 uppercase tracking-wider font-semibold">
               Status: {coreDetails.h.status}
@@ -191,7 +205,6 @@ export function SettingsScreen() {
       <FocusSurface
         className="self-start rounded-xl bg-accent px-4 py-2 mb-10"
         onPress={() => {
-          setOmssBaseUrl(cineproBaseUrl);
           void queryClient.invalidateQueries({ queryKey: ['omss'] });
           void queryClient.invalidateQueries({ queryKey: ['tmdb'] });
           Alert.alert('Applied', 'URLs and keys synced; caches refreshed.');
