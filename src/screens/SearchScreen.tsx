@@ -1,19 +1,20 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { TmdbApi } from '@/api/tmdbClient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TmdbApi, TmdbHttpError } from '@/api/tmdbClient';
 import type { TmdbMultiSearchResult } from '@/api/types/tmdb';
-import { MediaCard } from '@/components/MediaCard';
 import type { MediaCardModel } from '@/components/MediaCard';
+import { MediaPosterGrid } from '@/components/MediaPosterGrid';
 import { MissingKeysBanner } from '@/components/MissingKeysBanner';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
-import { GRID_LIST_SIDE_PADDING, GRID_ROW_GAP, gridPosterSlotDimensions } from '@/utils/layout';
+import { GRID_LIST_SIDE_PADDING } from '@/utils/layout';
 import { ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
+import { useAppTheme } from '@/theme/AppThemeProvider';
 
 function toModel(hit: TmdbMultiSearchResult): MediaCardModel | null {
   if (hit.media_type === 'movie') {
@@ -41,19 +42,20 @@ function toModel(hit: TmdbMultiSearchResult): MediaCardModel | null {
 
 export function SearchScreen() {
   const navigation = useAppNavigation();
-  const { overscanX, gridColumns: numColumns, windowWidth } = useResponsive();
-  const { posterW, posterH, slotW } = gridPosterSlotDimensions(windowWidth, overscanX, numColumns);
+  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const { overscanX } = useResponsive();
   const ts = useThemedStyles();
   const [q, setQ] = useState('');
   const debounced = useDebouncedValue(q, 380);
   const hasTmdb = useHasConfiguredTmdbKey();
-
-  const enabled = debounced.trim().length >= 2 && hasTmdb;
+  const trimmed = debounced.trim();
+  const enabled = trimmed.length >= 2 && hasTmdb;
 
   const query = useInfiniteQuery({
-    queryKey: ['tmdb', 'searchInfinite', debounced.trim()] as const,
+    queryKey: ['tmdb', 'searchInfinite', trimmed] as const,
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => TmdbApi.searchMulti(debounced.trim(), pageParam),
+    queryFn: ({ pageParam }) => TmdbApi.searchMulti(trimmed, pageParam as number),
     getNextPageParam: (last) => (last.page < last.total_pages ? last.page + 1 : undefined),
     enabled,
   });
@@ -77,18 +79,40 @@ export function SearchScreen() {
     [navigation]
   );
 
-  const renderItem = useCallback(
-    ({ item }: { item: MediaCardModel }) => (
-      <View style={{ width: slotW, alignItems: 'center', paddingBottom: GRID_ROW_GAP }}>
-        <MediaCard item={item} width={posterW} height={posterH} onPress={() => onSelect(item)} />
-      </View>
-    ),
-    [onSelect, posterH, posterW, slotW]
-  );
+  const listEmpty = useMemo(() => {
+    if (!enabled) {
+      return (
+        <ThemedText variant="muted" className="px-1 pt-2">
+          Type at least two characters to search TMDB.
+        </ThemedText>
+      );
+    }
+    if (query.isPending) {
+      return <ActivityIndicator color={colors.accent} style={{ marginTop: 32 }} />;
+    }
+    if (query.isError) {
+      const msg =
+        query.error instanceof TmdbHttpError
+          ? `Search failed (${query.error.status}). Check your TMDB key in Settings.`
+          : query.error instanceof Error
+            ? query.error.message
+            : 'Search failed. Try again.';
+      return (
+        <ThemedText variant="muted" className="px-1 pt-2 leading-5">
+          {msg}
+        </ThemedText>
+      );
+    }
+    return (
+      <ThemedText variant="muted" className="px-1 pt-2">
+        No movies or series found for “{trimmed}”.
+      </ThemedText>
+    );
+  }, [colors.accent, enabled, query.error, query.isError, query.isPending, trimmed]);
 
   if (!hasTmdb) {
     return (
-      <ThemedScreen className="px-4 pt-12">
+      <ThemedScreen className="px-4" style={{ paddingTop: Math.max(insets.top, 12) }}>
         <MissingKeysBanner />
       </ThemedScreen>
     );
@@ -97,8 +121,8 @@ export function SearchScreen() {
   const listPad = GRID_LIST_SIDE_PADDING + overscanX;
 
   return (
-    <ThemedScreen className="pt-12">
-      <View style={{ paddingHorizontal: listPad }}>
+    <ThemedScreen style={{ paddingTop: Math.max(insets.top, 12) }}>
+      <View style={{ paddingHorizontal: listPad, paddingBottom: 12 }}>
         <ThemedText variant="title" className="text-2xl mb-4">
           Search
         </ThemedText>
@@ -107,34 +131,27 @@ export function SearchScreen() {
           onChangeText={setQ}
           placeholder="Titles, people, keywords…"
           placeholderTextColor={ts.placeholder}
-          className="mb-4 rounded-2xl px-4 py-3"
+          className="rounded-2xl px-4 py-3"
           style={ts.input}
           accessibilityLabel="Search catalog"
           autoCorrect={false}
+          returnKeyType="search"
         />
       </View>
 
-      {query.isFetching ? (
-        <ActivityIndicator color={ts.colors.accent} style={{ marginTop: 24 }} />
-      ) : null}
-
-      {!enabled ? (
-        <ThemedText variant="muted" style={{ paddingHorizontal: listPad }}>
-          Type at least two characters to search TMDB.
-        </ThemedText>
-      ) : (
-        <FlashList
-          data={flat}
-          renderItem={renderItem}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={numColumns}
-          extraData={`${numColumns}-${posterW}-${windowWidth}`}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: listPad, paddingBottom: 32 }}
-          onEndReached={() => query.fetchNextPage()}
-          onEndReachedThreshold={0.7}
-        />
-      )}
+      <MediaPosterGrid
+        data={enabled ? flat : []}
+        listHorizontalPadding={listPad}
+        overscanX={overscanX}
+        onSelect={onSelect}
+        ListEmptyComponent={listEmpty}
+        bottomInset={Math.max(insets.bottom, 24) + 16}
+        onEndReached={() => {
+          if (enabled && query.hasNextPage && !query.isFetchingNextPage) {
+            void query.fetchNextPage();
+          }
+        }}
+      />
     </ThemedScreen>
   );
 }
