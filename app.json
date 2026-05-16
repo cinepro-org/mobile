@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CinePro",
+    "name": "Cine Pro",
     "slug": "cinepro",
     "version": "1.0.0",
     "orientation": "default",
@@ -14,15 +14,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cinestream.app",
+      "bundleIdentifier": "com.cinepro.app",
       "infoPlist": {
+        "CFBundleDisplayName": "Cine Pro",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
       }
     },
     "android": {
-      "package": "com.cinestream.app",
+      "package": "com.cinepro.app",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon/foreground.png",
