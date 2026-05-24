@@ -57,7 +57,8 @@
           }
         }
       ],
-      "./plugins/withAndroidCleartextTraffic.js"
+      "./plugins/withAndroidCleartextTraffic.js",
+      "./plugins/withAndroidReleaseProguard.js"
     ]
   }
 }

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import React, { useLayoutEffect } from 'react';
+import { Platform, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
@@ -17,7 +17,7 @@ export function SplashScreen() {
   const logoOpacity = useSharedValue(0);
   const tagOpacity = useSharedValue(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 520 });
     logoScale.value = withSpring(1, { damping: 14, stiffness: 120 });
     tagOpacity.value = withDelay(280, withTiming(1, { duration: 480 }));
@@ -43,10 +43,20 @@ export function SplashScreen() {
         locations={[0, 0.45, 1]}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
       >
-        <Animated.View style={logoAnim} className="items-center">
+        <Animated.View
+          style={logoAnim}
+          className="items-center"
+          collapsable={false}
+          renderToHardwareTextureAndroid={Platform.OS === 'android'}
+        >
           <AppLogo width={200} height={52} />
         </Animated.View>
-        <Animated.View style={tagAnim} className="items-center mt-6 gap-2">
+        <Animated.View
+          style={tagAnim}
+          className="items-center mt-6 gap-2"
+          collapsable={false}
+          renderToHardwareTextureAndroid={Platform.OS === 'android'}
+        >
           <Text
             className="text-center text-[13px] font-semibold tracking-[0.22em] uppercase"
             style={{ color: colors.textFaint }}
