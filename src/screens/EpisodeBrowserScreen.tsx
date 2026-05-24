@@ -57,18 +57,10 @@ export function EpisodeBrowserScreen() {
   const renderItem = useCallback(
     ({ item }: { item: (typeof episodes)[number] }) => {
       const uri = tmdbImg(item.still_path ?? show.data?.poster_path, 'w500');
-      const epState = resolveStreamReadyState(
-        coreConfigured,
-        episodeQueryByNumber.get(item.episode_number) ?? {
-          isPending: true,
-          isFetching: true,
-          isError: false,
-          error: null,
-          data: undefined,
-        }
-      );
-      const epReady = epState.status === 'ready';
-      const epLoading = epState.status === 'loading';
+      const epQuery = episodeQueryByNumber.get(item.episode_number);
+      const epState = epQuery ? resolveStreamReadyState(coreConfigured, epQuery) : null;
+      const epReady = epState?.status === 'ready';
+      const epLoading = epState?.status === 'loading';
 
       return (
         <FocusSurface
@@ -134,12 +126,14 @@ export function EpisodeBrowserScreen() {
               {season.isLoading
                 ? 'Loading episodes…'
                 : coreConfigured
-                  ? `${listData.length} episodes · ${readyCount} stream${readyCount === 1 ? '' : 's'} ready`
+                  ? readyCount > 0
+                    ? `${listData.length} episodes · ${readyCount} stream${readyCount === 1 ? '' : 's'} ready`
+                    : `${listData.length} episodes · tap to load streams`
                   : `${listData.length} episodes`}
             </ThemedText>
             {!coreConfigured ? (
               <ThemedText variant="faint" className="text-xs mt-2">
-                Configure CinePro Core in Settings to prefetch episode links.
+                Configure CinePro Core in Settings to load episode streams on demand.
               </ThemedText>
             ) : null}
           </View>

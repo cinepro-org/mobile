@@ -4,7 +4,7 @@ import { qk } from '@/api/queryKeys';
 import type { OmssSourceResponse } from '@/api/types/omss';
 import { OmssHttpError } from '@/api/types/omss';
 
-/** Keep manifests warm while browsing detail / episode lists. */
+/** Keep manifests warm while browsing detail / player (episode lists fetch on tap). */
 export const PLAYBACK_SOURCE_STALE_MS = 90_000;
 
 export function playbackSourceRetry(count: number, err: Error): boolean {

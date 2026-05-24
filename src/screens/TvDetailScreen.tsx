@@ -115,30 +115,29 @@ export function TvDetailScreen() {
   const seasonEpisodes = seasonDetail.data?.episodes ?? [];
   const showTitle = detail.data?.name ?? 'Series';
 
-  const { playEpisode, episodeQueryByNumber, readyCount } = usePlayTvEpisode({
+  const { playEpisode, episodeQueryByNumber, readyCount, activeEpisodeNumber } = usePlayTvEpisode({
     tmdbId: id,
     seasonNumber: selectedSeasonNumber,
     episodes: seasonEpisodes,
     showTitle,
     posterPath: detail.data?.poster_path,
     backdropPath: detail.data?.backdrop_path,
-    prefetchEnabled: seasonEpisodes.length > 0,
   });
 
-  const primaryPrefetch = episodeQueryByNumber.get(seasonEpisodes[0]?.episode_number ?? 1);
+  const availabilityQuery =
+    activeEpisodeNumber != null ? episodeQueryByNumber.get(activeEpisodeNumber) : undefined;
   const streamState = useMemo(
     () =>
-      resolveStreamReadyState(
-        coreConfigured,
-        primaryPrefetch ?? {
-          isPending: seasonDetail.isLoading,
-          isFetching: seasonDetail.isFetching,
-          isError: seasonDetail.isError,
-          error: seasonDetail.error,
-          data: undefined,
-        }
-      ),
-    [coreConfigured, primaryPrefetch, seasonDetail.error, seasonDetail.isError, seasonDetail.isFetching, seasonDetail.isLoading]
+      availabilityQuery
+        ? resolveStreamReadyState(coreConfigured, availabilityQuery)
+        : resolveStreamReadyState(coreConfigured, {
+            isPending: false,
+            isFetching: false,
+            isError: false,
+            error: null,
+            data: undefined,
+          }),
+    [availabilityQuery, coreConfigured]
   );
 
   const runtimes = detail.data?.episode_run_time?.filter((n) => n > 0) ?? [];
@@ -421,7 +420,9 @@ export function TvDetailScreen() {
                       <ActivityIndicator color={colors.accent} size="small" />
                     ) : (
                       <Text className="text-xs" style={{ color: colors.textFaint }}>
-                        {seasonEpisodes.length} ep · {readyCount} ready
+                        {readyCount > 0
+                          ? `${seasonEpisodes.length} ep · ${readyCount} ready`
+                          : `${seasonEpisodes.length} ep`}
                       </Text>
                     )}
                   </View>
@@ -444,18 +445,10 @@ export function TvDetailScreen() {
                     <View className="gap-2.5">
                       {seasonEpisodes.map((item) => {
                         const uri = tmdbImg(item.still_path ?? d?.poster_path, 'w500');
-                        const epState = resolveStreamReadyState(
-                          coreConfigured,
-                          episodeQueryByNumber.get(item.episode_number) ?? {
-                            isPending: true,
-                            isFetching: true,
-                            isError: false,
-                            error: null,
-                            data: undefined,
-                          }
-                        );
-                        const epReady = epState.status === 'ready';
-                        const epLoading = epState.status === 'loading';
+                        const epQuery = episodeQueryByNumber.get(item.episode_number);
+                        const epState = epQuery ? resolveStreamReadyState(coreConfigured, epQuery) : null;
+                        const epReady = epState?.status === 'ready';
+                        const epLoading = epState?.status === 'loading';
                         const isContinue =
                           continueEpisode?.season === selectedSeasonNumber &&
                           continueEpisode.episode === item.episode_number;
@@ -579,12 +572,14 @@ export function TvDetailScreen() {
                       </Text>
                     </View>
                     <Text className="text-sm leading-5" style={{ color: colors.textMuted }}>
-                      {streamState.status === 'ready'
-                        ? `Prefetching ${selectedSeasonSummary.name} · ${streamAvailabilityDetailLine(
-                            streamState,
-                            primaryPrefetch?.data?.expiresAt
-                          )}`
-                        : streamAvailabilityDetailLine(streamState)}
+                      {activeEpisodeNumber == null && streamState.status === 'empty'
+                        ? 'Tap an episode below to check if streams are available from your Core server.'
+                        : streamState.status === 'ready'
+                          ? `${selectedSeasonSummary.name} · ${streamAvailabilityDetailLine(
+                              streamState,
+                              availabilityQuery?.data?.expiresAt
+                            )}`
+                          : streamAvailabilityDetailLine(streamState)}
                     </Text>
                   </View>
                 ) : null}
