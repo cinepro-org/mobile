@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FocusSurface, type FocusSurfaceProps } from '@/tv/FocusSurface';
@@ -18,18 +18,21 @@ type Props = Omit<FocusSurfaceProps, 'children'> & {
 };
 
 /** Large, focusable pill button optimized for Android TV remotes. */
-export function TVFocusableButton({
-  label,
-  icon,
-  iconColor,
-  textColor,
-  style,
-  className,
-  subtitle,
-  focusVariant = 'default',
-  size = 'large',
-  ...rest
-}: Props) {
+export const TVFocusableButton = forwardRef<View, Props>(function TVFocusableButton(
+  {
+    label,
+    icon,
+    iconColor,
+    textColor,
+    style,
+    className,
+    subtitle,
+    focusVariant = 'default',
+    size = 'large',
+    ...rest
+  },
+  ref
+) {
   const { colors } = useAppTheme();
 
   const paddingV = size === 'hero' ? 18 : size === 'large' ? 14 : 12;
@@ -39,6 +42,7 @@ export function TVFocusableButton({
 
   return (
     <FocusSurface
+      ref={ref}
       className={className ?? 'rounded-2xl flex-row items-center gap-3'}
       style={[{ paddingVertical: paddingV, paddingHorizontal: paddingH }, style]}
       focusVariant={focusVariant}
@@ -57,4 +61,4 @@ export function TVFocusableButton({
       </View>
     </FocusSurface>
   );
-}
+});

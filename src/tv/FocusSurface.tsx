@@ -19,6 +19,14 @@ export type FocusSurfaceProps = PressableProps & {
   hasTVPreferredFocus?: boolean;
   /** Collapse the TV side rail when this element receives focus (main content only). */
   collapseTVNavOnFocus?: boolean;
+  /** Android TV: native node handle for D-pad left focus search. */
+  nextFocusLeft?: number;
+  /** Android TV: native node handle for D-pad right focus search. */
+  nextFocusRight?: number;
+  /** Android TV: native node handle for D-pad down focus search. */
+  nextFocusDown?: number;
+  /** Android TV: native node handle for D-pad up focus search. */
+  nextFocusUp?: number;
 };
 
 export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSurface(
@@ -28,6 +36,10 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
     focusVariant = 'default',
     hasTVPreferredFocus,
     collapseTVNavOnFocus,
+    nextFocusLeft,
+    nextFocusRight,
+    nextFocusDown,
+    nextFocusUp,
     onFocus,
     onBlur,
     style,
@@ -78,7 +90,13 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
         setIsFocused(false);
         onBlur?.(e);
       }}
-      {...rest}
+      {...({
+        ...rest,
+        nextFocusLeft,
+        nextFocusRight,
+        nextFocusDown,
+        nextFocusUp,
+      } as PressableProps)}
     >
       {children}
     </AnimatedPressable>

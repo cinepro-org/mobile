@@ -17,6 +17,7 @@ import { ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { focusedRingStyle } from '@/tv/focusStyles';
 import { useTV } from '@/hooks/useTV';
+import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
 
 function toModel(hit: TmdbMultiSearchResult): MediaCardModel | null {
   if (hit.media_type === 'movie') {
@@ -47,6 +48,7 @@ export function SearchScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const isTV = useTV();
+  const { contentFocusRef, nextFocusLeft, registerContentFocus } = useTVContentFocusLink();
   const [inputFocused, setInputFocused] = useState(false);
   const { overscanX } = useResponsive();
   const ts = useThemedStyles();
@@ -131,6 +133,7 @@ export function SearchScreen() {
           Search
         </ThemedText>
         <TextInput
+          ref={isTV ? contentFocusRef : undefined}
           value={q}
           onChangeText={setQ}
           placeholder="Titles, people, keywords…"
@@ -144,7 +147,11 @@ export function SearchScreen() {
           autoCorrect={false}
           returnKeyType="search"
           hasTVPreferredFocus={isTV}
-          onFocus={() => setInputFocused(true)}
+          {...(isTV ? { nextFocusLeft: nextFocusLeft as never } : {})}
+          onFocus={() => {
+            setInputFocused(true);
+            if (isTV) registerContentFocus?.();
+          }}
           onBlur={() => setInputFocused(false)}
         />
       </View>

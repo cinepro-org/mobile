@@ -1,10 +1,10 @@
-import React from 'react';
-import { Platform } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Platform, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { RootStackParamList, MainTabParamList } from '@/navigation/types';
 import { HomeScreen } from '@/screens/HomeScreen';
@@ -16,12 +16,13 @@ import { TvDetailScreen } from '@/screens/TvDetailScreen';
 import { EpisodeBrowserScreen } from '@/screens/EpisodeBrowserScreen';
 import { GenreScreen } from '@/screens/GenreScreen';
 import { PlayerScreen } from '@/screens/PlayerScreen';
-import { TVDrawerContent } from '@/tv/TVDrawerContent';
-import { TVNavigationProvider, useTVNavigation } from '@/tv/TVNavigationContext';
+import { TVSideNavRail } from '@/tv/TVSideNavRail';
+import { TVNavigationProvider } from '@/tv/TVNavigationContext';
+import { TVTabBarCapture, TVTabBarPlaceholder } from '@/tv/TVTabBarBridge';
+import { TV_NAV_COLLAPSED_WIDTH } from '@/tv/tvNavSizes';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
-const Drawer = createDrawerNavigator<MainTabParamList>();
 
 function Tabs() {
   const { colors } = useAppTheme();
@@ -73,62 +74,45 @@ function Tabs() {
   );
 }
 
-function TvDrawerInner() {
-  const { colors } = useAppTheme();
-  const { widthAnim } = useTVNavigation();
+function TvTabsInner() {
+  const [tabBarProps, setTabBarProps] = useState<BottomTabBarProps | null>(null);
+  const onTabBarProps = useCallback((props: BottomTabBarProps) => {
+    setTabBarProps(props);
+  }, []);
 
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <TVDrawerContent {...props} />}
-      screenOptions={{
-        headerShown: false,
-        drawerType: 'permanent',
-        drawerStyle: {
-          width: widthAnim,
-          backgroundColor: colors.surface,
-          borderRightWidth: 0,
-        },
-        drawerActiveTintColor: colors.text,
-        drawerInactiveTintColor: colors.textMuted,
-        swipeEnabled: false,
-      }}
-    >
-      <Drawer.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ drawerIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Search"
-        component={SearchScreen}
-        options={{ drawerIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Library"
-        component={LibraryScreen}
-        options={{ drawerIcon: ({ color, size }) => <Ionicons name="albums" color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />,
-        }}
-      />
-    </Drawer.Navigator>
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingLeft: TV_NAV_COLLAPSED_WIDTH }}>
+        <Tab.Navigator
+          tabBar={(props) => (
+            <>
+              <TVTabBarCapture tabBarProps={props} onTabBarProps={onTabBarProps} />
+              <TVTabBarPlaceholder />
+            </>
+          )}
+          screenOptions={{ headerShown: false }}
+        >
+          <Tab.Screen name="Home" component={HomeScreen} />
+          <Tab.Screen name="Search" component={SearchScreen} />
+          <Tab.Screen name="Library" component={LibraryScreen} />
+          <Tab.Screen name="Settings" component={SettingsScreen} />
+        </Tab.Navigator>
+      </View>
+      {tabBarProps ? <TVSideNavRail {...tabBarProps} /> : null}
+    </View>
   );
 }
 
-function TvDrawer() {
+function TvTabs() {
   return (
     <TVNavigationProvider>
-      <TvDrawerInner />
+      <TvTabsInner />
     </TVNavigationProvider>
   );
 }
 
 function Shell() {
-  return Platform.isTV ? <TvDrawer /> : <Tabs />;
+  return Platform.isTV ? <TvTabs /> : <Tabs />;
 }
 
 export function RootNavigator() {

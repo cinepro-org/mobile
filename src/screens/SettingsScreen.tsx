@@ -12,6 +12,7 @@ import { OmssHttpError, type OmssHealthResponse } from '@/api/types/omss';
 import { CINEPRO_ENV_BASE_URL } from '@/utils/env';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { useTV } from '@/hooks/useTV';
+import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import type { ThemeMode } from '@/theme/colors';
 
@@ -72,6 +73,7 @@ export function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const { colors, isDark } = useAppTheme();
   const isTV = useTV();
+  const { contentFocusRef, nextFocusLeft } = useTVContentFocusLink();
 
   const baseKey = cineproBaseUrl.trim();
   const health = useQuery({
@@ -153,6 +155,7 @@ export function SettingsScreen() {
         {themeOptions.map((opt, index) => (
           <FocusSurface
             key={opt.id}
+            ref={isTV && index === 0 ? contentFocusRef : undefined}
             className="flex-1 rounded-2xl py-3.5 flex-row items-center justify-center gap-2 border"
             style={{
               backgroundColor: themeMode === opt.id ? colors.accent : colors.inputBg,
@@ -160,6 +163,8 @@ export function SettingsScreen() {
             }}
             focusVariant={themeMode === opt.id ? 'accent' : 'subtle'}
             hasTVPreferredFocus={isTV && index === 0}
+            collapseTVNavOnFocus={isTV}
+            nextFocusLeft={isTV && index === 0 ? nextFocusLeft : undefined}
             onPress={() => setThemeMode(opt.id)}
             accessibilityLabel={`${opt.label} theme`}
             accessibilityState={{ selected: themeMode === opt.id }}

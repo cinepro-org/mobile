@@ -3,7 +3,10 @@ export { FocusButton } from '@/tv/FocusButton';
 export { FocusCard } from '@/tv/FocusCard';
 export { FocusMenuItem } from '@/tv/FocusMenuItem';
 export { TVDrawerContent } from '@/tv/TVDrawerContent';
-export { TVSideNavItem } from '@/tv/TVSideNavItem';
+export { TVSideNavRail } from '@/tv/TVSideNavRail';
+export { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
+export { useInitialTVFocus } from '@/tv/useInitialTVFocus';
+export { useTVFocusHandle } from '@/tv/useTVFocusHandle';
 export { TVFocusableButton } from '@/tv/TVFocusableButton';
 export { TVFocusableCard } from '@/tv/TVFocusableCard';
 export { TVHomeHero } from '@/tv/TVHomeHero';
@@ -17,5 +20,5 @@ export {
   useTVNavigationOptional,
 } from '@/tv/TVNavigationContext';
 export { useTVEventHandler, type TVRemoteEvent, type TVRemoteEventHandler } from '@/tv/useTVEventHandler';
-export { TV_FOCUS_SCALE, type FocusVariant } from '@/tv/focusStyles';
+export { TV_FOCUS_SCALE, TV_NAV_FOCUS_SCALE, type FocusVariant } from '@/tv/focusStyles';
 export { TV_NAV_COLLAPSED_WIDTH, tvNavExpandedWidth } from '@/tv/tvNavSizes';

@@ -18,6 +18,7 @@ import { TVHomeHero } from '@/tv/TVHomeHero';
 import { TVMediaRow } from '@/tv/TVMediaRow';
 import { TVContentArea } from '@/tv/TVContentArea';
 import { useTV } from '@/hooks/useTV';
+import { useTVFocusHandle } from '@/tv/useTVFocusHandle';
 import type { TmdbGenre, TmdbMovieListResult, TmdbTvListResult } from '@/api/types/tmdb';
 
 function mapMovie(m: TmdbMovieListResult): MediaCardModel {
@@ -135,6 +136,8 @@ export function HomeScreen() {
     trendingMovies.isFetching || trendingTv.isFetching || discoverMovies.isFetching || genres.isFetching;
 
   const hp = Math.max(overscanX, 16);
+  const belowHeroFocus = useTVFocusHandle();
+  const linkRowBelowHero = !genreChips.length && hasTmdb;
 
   if (isTV) {
     return (
@@ -145,6 +148,8 @@ export function HomeScreen() {
           contentContainerStyle={{ paddingBottom: sectionGap * 8 }}
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={false}
+          focusable={false}
+          nestedScrollEnabled
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.accent} />
           }
@@ -155,6 +160,7 @@ export function HomeScreen() {
             items={heroItems}
             onOpenActive={onOpenHero}
             onPlayActive={onPlayHero}
+            downFocusHandle={belowHeroFocus.handle}
           />
 
           {!hasTmdb ? (
@@ -171,10 +177,17 @@ export function HomeScreen() {
               <ThemedText variant="title" className="text-xl mb-4">
                 Browse by genre
               </ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {genreChips.map((item: TmdbGenre) => (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                focusable={false}
+                nestedScrollEnabled
+                contentContainerStyle={{ gap: 12 }}
+              >
+                {genreChips.map((item: TmdbGenre, index: number) => (
                   <FocusSurface
                     key={item.id}
+                    ref={index === 0 ? belowHeroFocus.ref : undefined}
                     className="rounded-full px-6 py-3"
                     style={ts.chip}
                     focusVariant="subtle"
@@ -207,6 +220,7 @@ export function HomeScreen() {
               isLoading={trendingMovies.isLoading}
               onSelect={onSelect}
               horizontalPadding={hp}
+              linkFirstCardRef={linkRowBelowHero ? belowHeroFocus.ref : undefined}
             />
             <TVMediaRow
               eyebrow="ON AIR"

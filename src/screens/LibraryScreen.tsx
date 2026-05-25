@@ -4,6 +4,7 @@ import { MediaRow } from '@/components/MediaRow';
 import type { MediaCardModel } from '@/components/MediaCard';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTV } from '@/hooks/useTV';
+import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
@@ -14,6 +15,7 @@ export function LibraryScreen() {
   const { colors } = useAppTheme();
   const { posterW, posterH, sectionGap } = useResponsive();
   const isTV = useTV();
+  const { contentFocusRef, nextFocusLeft } = useTVContentFocusLink();
   const watchlist = useLibraryStore((s) => s.watchlist);
   const favorites = useLibraryStore((s) => s.favorites);
   const continueWatching = useLibraryStore((s) => s.continueWatching);
@@ -79,6 +81,8 @@ export function LibraryScreen() {
         posterH={posterH}
         onSelect={onPick}
         preferFirstFocus={isTV && continueModels.length > 0}
+        contentFocusRef={isTV && continueModels.length > 0 ? contentFocusRef : undefined}
+        nextFocusLeft={isTV ? nextFocusLeft : undefined}
       />
       <MediaRow
         title="Watchlist"
@@ -87,6 +91,10 @@ export function LibraryScreen() {
         posterH={posterH}
         onSelect={onPick}
         preferFirstFocus={isTV && continueModels.length === 0 && wlModels.length > 0}
+        contentFocusRef={
+          isTV && continueModels.length === 0 && wlModels.length > 0 ? contentFocusRef : undefined
+        }
+        nextFocusLeft={isTV ? nextFocusLeft : undefined}
       />
       <MediaRow
         title="Favorites"
@@ -97,6 +105,12 @@ export function LibraryScreen() {
         preferFirstFocus={
           isTV && continueModels.length === 0 && wlModels.length === 0 && favModels.length > 0
         }
+        contentFocusRef={
+          isTV && continueModels.length === 0 && wlModels.length === 0 && favModels.length > 0
+            ? contentFocusRef
+            : undefined
+        }
+        nextFocusLeft={isTV ? nextFocusLeft : undefined}
       />
     </ScrollView>
   );

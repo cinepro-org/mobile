@@ -1,5 +1,5 @@
-import React, { memo, useCallback } from 'react';
-import { Text, View } from 'react-native';
+import React, { memo, useCallback, type RefCallback } from 'react';
+import { Text, View, type View as RNView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { MediaCardModel } from '@/components/MediaCard';
 import { TVFocusableCard } from '@/tv/TVFocusableCard';
@@ -18,6 +18,8 @@ type Props = {
   preferFirstFocus?: boolean;
   landscape?: boolean;
   horizontalPadding?: number;
+  /** Attach to the first card — used to wire hero nextFocusDown. */
+  linkFirstCardRef?: RefCallback<RNView>;
 };
 
 /** Horizontal Android TV content row with large focusable cards. */
@@ -32,13 +34,15 @@ export const TVMediaRow = memo(function TVMediaRow({
   preferFirstFocus,
   landscape = true,
   horizontalPadding = 16,
+  linkFirstCardRef,
 }: Props) {
   const { colors } = useAppTheme();
 
   const renderItem = useCallback(
     ({ item, index }: { item: MediaCardModel; index: number }) => (
-      <View style={{ marginRight: 18 }}>
+      <View style={{ marginRight: 14, overflow: 'visible' }}>
         <TVFocusableCard
+          ref={index === 0 ? linkFirstCardRef : undefined}
           item={item}
           width={cardW}
           height={cardH}
@@ -48,7 +52,7 @@ export const TVMediaRow = memo(function TVMediaRow({
         />
       </View>
     ),
-    [cardH, cardW, landscape, onSelect, preferFirstFocus]
+    [cardH, cardW, landscape, linkFirstCardRef, onSelect, preferFirstFocus]
   );
 
   if (isLoading) {
@@ -79,8 +83,8 @@ export const TVMediaRow = memo(function TVMediaRow({
         renderItem={renderItem}
         showsHorizontalScrollIndicator={false}
         removeClippedSubviews={false}
-        style={{ height: cardH + 12 }}
-        contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingVertical: 4 }}
+        style={{ height: cardH + 28, overflow: 'visible' }}
+        contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingVertical: 10 }}
       />
     </View>
   );

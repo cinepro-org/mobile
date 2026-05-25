@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tmdbImg } from '@/services/tmdbImages';
 import type { MediaCardModel } from '@/components/MediaCard';
 import { TVFocusableButton } from '@/tv/TVFocusableButton';
+import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
+import { useInitialTVFocus } from '@/tv/useInitialTVFocus';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { fontScale } from '@/utils/layout';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -22,6 +24,8 @@ type Props = {
   items: MediaCardModel[];
   onOpenActive?: (item: MediaCardModel) => void;
   onPlayActive?: (item: MediaCardModel) => void;
+  /** Native handle for D-pad down from hero buttons into rows/genres below. */
+  downFocusHandle?: number;
 };
 
 /** Full-bleed Android TV home hero with large typography and Play / Details CTAs. */
@@ -31,8 +35,11 @@ export const TVHomeHero = memo(function TVHomeHero({
   items,
   onOpenActive,
   onPlayActive,
+  downFocusHandle,
 }: Props) {
   const { colors } = useAppTheme();
+  const { contentFocusRef, nextFocusLeft } = useTVContentFocusLink();
+  const { hasTVPreferredFocus, onInitialFocus } = useInitialTVFocus(true);
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const [heroFocused, setHeroFocused] = useState(false);
@@ -162,13 +169,19 @@ export const TVHomeHero = memo(function TVHomeHero({
         <View className="flex-row items-center mt-6 gap-4">
           {onPlayActive ? (
             <TVFocusableButton
+              ref={contentFocusRef}
+              nextFocusLeft={nextFocusLeft}
+              nextFocusDown={downFocusHandle}
               label="Play"
               icon="play"
               size="hero"
               focusVariant="accent"
-              hasTVPreferredFocus
+              hasTVPreferredFocus={hasTVPreferredFocus}
               collapseTVNavOnFocus
-              onFocus={() => setHeroFocused(true)}
+              onFocus={() => {
+                onInitialFocus();
+                setHeroFocused(true);
+              }}
               onBlur={() => setHeroFocused(false)}
               onPress={() => onPlayActive(active)}
               style={{ backgroundColor: colors.accent }}
@@ -179,12 +192,17 @@ export const TVHomeHero = memo(function TVHomeHero({
           ) : null}
           {onOpenActive ? (
             <TVFocusableButton
+              nextFocusLeft={nextFocusLeft}
+              nextFocusDown={downFocusHandle}
               label="Details"
               icon="information-circle-outline"
               size="hero"
               focusVariant="onMedia"
               collapseTVNavOnFocus
-              onFocus={() => setHeroFocused(true)}
+              onFocus={() => {
+                onInitialFocus();
+                setHeroFocused(true);
+              }}
               onBlur={() => setHeroFocused(false)}
               onPress={() => onOpenActive(active)}
               style={{ backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' }}

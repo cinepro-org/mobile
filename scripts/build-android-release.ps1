@@ -1,14 +1,21 @@
 # Builds Android release artifacts. Expo prebuild and Gradle run from the real project path.
 #
 # Usage (from repo root):
-#   npm run android:release          # phone + TV APKs -> dist/
-#   npm run android:apk:subst        # phone APK only
-#   npm run android:release:tv       # TV APK only
+#   npm run android:release              # clean prebuild + phone + TV APKs -> dist/
+#   npm run android:release:tv         # clean prebuild + TV APK only
+#   npm run android:release:tv:dirty   # reuse android/ + Gradle only (fast JS/UI testing)
+#   npm run android:apk:dirty          # Gradle only (uses whatever android/ is already configured)
+#
+# Parameters:
+#   -Dirty      Skip prebuild; run Gradle against the existing android/ project (fastest).
+#   -SkipClean  Run `expo prebuild` without --clean (native changes, no full wipe).
 param(
   [ValidateSet('assembleRelease', 'bundleRelease')]
   [string]$GradleTask = 'assembleRelease',
   [ValidateSet('phone', 'tv', 'both')]
-  [string]$Target = 'phone'
+  [string]$Target = 'phone',
+  [switch]$Dirty,
+  [switch]$SkipClean
 )
 
 Set-StrictMode -Version Latest
@@ -30,15 +37,21 @@ function Set-TvPrebuildEnv {
 
 function Invoke-ExpoPrebuild {
   param(
-    [bool]$IsTV
+    [bool]$IsTV,
+    [bool]$Clean
   )
   $label = if ($IsTV) { 'TV' } else { 'Phone' }
   Set-TvPrebuildEnv -IsTV $IsTV
-  Write-Host "Running expo prebuild --clean --platform android ($label)..."
+  $cleanFlag = if ($Clean) { '--clean' } else { '' }
+  Write-Host "Running expo prebuild $cleanFlag --platform android ($label)...".Trim()
   Push-Location $projectRoot
   try {
     $env:CI = '1'
-    & npx expo prebuild --clean --platform android
+    if ($Clean) {
+      & npx expo prebuild --clean --platform android
+    } else {
+      & npx expo prebuild --platform android
+    }
     if ($LASTEXITCODE -ne 0) {
       throw "expo prebuild failed for $label (exit $LASTEXITCODE)"
     }
@@ -50,7 +63,7 @@ function Invoke-ExpoPrebuild {
 function Invoke-GradleRelease {
   param([string]$Task)
   if (-not (Test-Path $gradleAndroidDir)) {
-    throw "Android project not found at $gradleAndroidDir (prebuild may have failed)."
+    throw "Android project not found at $gradleAndroidDir. Run a full build first (without -Dirty)."
   }
   Push-Location $gradleAndroidDir
   try {
@@ -94,19 +107,38 @@ function Copy-ReleaseArtifact {
 function Build-Target {
   param(
     [bool]$IsTV,
-    [string]$Task
+    [string]$Task,
+    [bool]$UseDirty,
+    [bool]$UseSkipClean
   )
   $label = if ($IsTV) { 'TV' } else { 'Phone' }
   Write-Host ""
   Write-Host "========== Building $label release =========="
-  Invoke-ExpoPrebuild -IsTV $IsTV
+  if ($UseDirty) {
+    Write-Host "Dirty build: skipping prebuild (reusing existing android/ project)."
+    if ($IsTV) {
+      Set-TvPrebuildEnv -IsTV $true
+    }
+  } else {
+    $clean = -not $UseSkipClean
+    Invoke-ExpoPrebuild -IsTV $IsTV -Clean $clean
+  }
   Invoke-GradleRelease -Task $Task
   Copy-ReleaseArtifact -IsTV $IsTV -Task $Task
 }
 
 try {
   Write-Host "Project: $projectRoot"
-  Write-Host "Target: $Target | Gradle task: $GradleTask"
+  $mode = if ($Dirty) { 'dirty (gradle only)' } elseif ($SkipClean) { 'prebuild (no clean)' } else { 'clean prebuild' }
+  Write-Host "Target: $Target | Gradle task: $GradleTask | Mode: $mode"
+
+  if ($Dirty -and $SkipClean) {
+    throw 'Use either -Dirty or -SkipClean, not both.'
+  }
+
+  if ($Dirty -and $Target -eq 'both') {
+    throw '-Dirty cannot build both phone and TV in one run (android/ can only match one variant). Use -Target tv or -Target phone.'
+  }
 
   $variants = @()
   switch ($Target) {
@@ -116,13 +148,13 @@ try {
   }
 
   foreach ($isTv in $variants) {
-    Build-Target -IsTV $isTv -Task $GradleTask
+    Build-Target -IsTV $isTv -Task $GradleTask -UseDirty:$Dirty -UseSkipClean:$SkipClean
   }
 
-  if ($Target -eq 'both') {
+  if (-not $Dirty -and $Target -eq 'both') {
     Write-Host ""
     Write-Host "Restoring phone android/ project for local development..."
-    Invoke-ExpoPrebuild -IsTV $false
+    Invoke-ExpoPrebuild -IsTV $false -Clean:(-not $SkipClean)
   }
 
   Write-Host ""

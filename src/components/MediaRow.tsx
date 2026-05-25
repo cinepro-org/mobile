@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, type RefCallback } from 'react';
 import { View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { MediaCardModel } from '@/components/MediaCard';
@@ -16,6 +16,8 @@ type Props = {
   onSelect: (item: MediaCardModel) => void;
   /** Focus the first card when this row mounts (e.g. first row on a screen). */
   preferFirstFocus?: boolean;
+  contentFocusRef?: RefCallback<View>;
+  nextFocusLeft?: number;
 };
 
 export const MediaRow = memo(function MediaRow({
@@ -27,6 +29,8 @@ export const MediaRow = memo(function MediaRow({
   isLoading,
   onSelect,
   preferFirstFocus,
+  contentFocusRef,
+  nextFocusLeft,
 }: Props) {
   const renderItem = useCallback(
     ({ item, index }: { item: MediaCardModel; index: number }) => (
@@ -37,10 +41,12 @@ export const MediaRow = memo(function MediaRow({
           height={posterH}
           onPress={() => onSelect(item)}
           hasTVPreferredFocus={preferFirstFocus && index === 0}
+          ref={preferFirstFocus && index === 0 ? contentFocusRef : undefined}
+          nextFocusLeft={preferFirstFocus && index === 0 ? nextFocusLeft : undefined}
         />
       </View>
     ),
-    [onSelect, posterH, posterW, preferFirstFocus]
+    [contentFocusRef, nextFocusLeft, onSelect, posterH, posterW, preferFirstFocus]
   );
 
   if (isLoading) {

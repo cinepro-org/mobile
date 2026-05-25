@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback, forwardRef, type RefCallback } from 'react';
 import { Platform, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,24 +22,32 @@ type Props = {
   onPress: () => void;
   focusedGlow?: boolean;
   hasTVPreferredFocus?: boolean;
+  nextFocusLeft?: number;
 };
 
-export const MediaCard = memo(function MediaCard({
-  item,
-  width,
-  height,
-  onPress,
-  focusedGlow = true,
-  hasTVPreferredFocus,
-}: Props) {
+export const MediaCard = memo(
+  forwardRef<View, Props>(function MediaCard(
+    {
+      item,
+      width,
+      height,
+      onPress,
+      focusedGlow = true,
+      hasTVPreferredFocus,
+      nextFocusLeft,
+    },
+    ref
+  ) {
   const { colors, isDark } = useAppTheme();
   const uri = tmdbImg(item.posterPath, 'w342');
 
   return (
     <FocusSurface
+      ref={ref}
       onPress={onPress}
       hasTVPreferredFocus={hasTVPreferredFocus}
       collapseTVNavOnFocus={Platform.isTV}
+      nextFocusLeft={nextFocusLeft}
       focusVariant="card"
       className="rounded-2xl overflow-hidden"
       style={focusedGlow ? { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 16 } : undefined}
@@ -104,4 +112,5 @@ export const MediaCard = memo(function MediaCard({
       </View>
     </FocusSurface>
   );
-});
+  })
+);
