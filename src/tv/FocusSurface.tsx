@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { focusedRingStyle, idleBorderStyle, TV_FOCUS_SCALE, type FocusVariant } from '@/tv/focusStyles';
+import { useTVNavigationOptional } from '@/tv/TVNavigationContext';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -16,6 +17,8 @@ export type FocusSurfaceProps = PressableProps & {
   focusVariant?: FocusVariant;
   /** When true, receives initial focus on mount (Android TV / tvOS). */
   hasTVPreferredFocus?: boolean;
+  /** Collapse the TV side rail when this element receives focus (main content only). */
+  collapseTVNavOnFocus?: boolean;
 };
 
 export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSurface(
@@ -24,6 +27,7 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
     focusedScale = TV_FOCUS_SCALE,
     focusVariant = 'default',
     hasTVPreferredFocus,
+    collapseTVNavOnFocus,
     onFocus,
     onBlur,
     style,
@@ -32,6 +36,7 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
   ref
 ) {
   const { colors } = useAppTheme();
+  const tvNav = useTVNavigationOptional();
   const focused = useSharedValue(0);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -65,6 +70,7 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
       onFocus={(e) => {
         focused.value = 1;
         setIsFocused(true);
+        if (collapseTVNavOnFocus) tvNav?.registerContentFocus();
         onFocus?.(e);
       }}
       onBlur={(e) => {

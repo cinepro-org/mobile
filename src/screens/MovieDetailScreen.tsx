@@ -27,6 +27,8 @@ import { useTV } from '@/hooks/useTV';
 import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { DetailBackdropHero } from '@/components/DetailBackdropHero';
+import { TVDetailLayout } from '@/tv/TVDetailLayout';
+import { TVMediaRow } from '@/tv/TVMediaRow';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 const OVERVIEW_PREVIEW_LINES = 5;
@@ -35,7 +37,7 @@ export function MovieDetailScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'MovieDetail'>>();
   const { id } = route.params;
-  const { posterW, posterH, overscanX, sectionGap, heroH } = useResponsive();
+  const { posterW, posterH, overscanX, sectionGap, heroH, landscapeW, landscapeH } = useResponsive();
   const { colors, isDark } = useAppTheme();
   const ts = useThemedStyles();
   const [overviewExpanded, setOverviewExpanded] = useState(false);
@@ -139,6 +141,78 @@ export function MovieDetailScreen() {
     navigation.goBack();
     return true;
   });
+
+  if (isTV) {
+    const metaChips = [
+      ...(d?.release_date ? [{ key: 'year', label: d.release_date.slice(0, 4) }] : []),
+      ...(runtimeLabel ? [{ key: 'runtime', label: runtimeLabel, icon: 'time-outline' as const }] : []),
+      ...(d?.vote_average != null
+        ? [{ key: 'rating', label: `${d.vote_average.toFixed(1)} TMDB`, icon: 'star' as const }]
+        : []),
+      ...(d?.genres ?? []).map((g) => ({ key: `genre-${g.id}`, label: g.name })),
+    ];
+
+    return (
+      <TVDetailLayout
+        backdropUri={backdropUri}
+        title={d?.title ?? 'Untitled'}
+        tagline={d?.tagline}
+        overview={d?.overview}
+        metaChips={metaChips}
+        loading={loading}
+        onBack={() => navigation.goBack()}
+        primaryAction={{
+          key: 'play',
+          label:
+            streamState.status === 'loading' ? 'Loading streams…' : resumeSec ? 'Resume' : 'Play',
+          icon: resumeSec ? 'play-circle' : 'play',
+          onPress: onPlay,
+          hasTVPreferredFocus: true,
+          accessibilityLabel: resumeSec ? 'Resume playback' : 'Play movie',
+        }}
+        secondaryActions={[
+          {
+            key: 'watchlist',
+            label: 'Watchlist',
+            icon: inWatchlist ? 'bookmark' : 'bookmark-outline',
+            active: inWatchlist,
+            onPress: () =>
+              d &&
+              toggleWatchlist({
+                mediaType: 'movie',
+                tmdbId: d.id,
+                title: d.title,
+                posterPath: d.poster_path,
+              }),
+          },
+          {
+            key: 'favorite',
+            label: 'Favorite',
+            icon: inFavorites ? 'heart' : 'heart-outline',
+            active: inFavorites,
+            onPress: () =>
+              d &&
+              toggleFavorite({
+                mediaType: 'movie',
+                tmdbId: d.id,
+                title: d.title,
+                posterPath: d.poster_path,
+              }),
+          },
+        ]}
+      >
+        <TVMediaRow
+          title="More like this"
+          data={recModels}
+          cardW={landscapeW}
+          cardH={landscapeH}
+          isLoading={rec.isLoading}
+          onSelect={(item) => navigation.navigate('MovieDetail', { id: item.id })}
+          horizontalPadding={0}
+        />
+      </TVDetailLayout>
+    );
+  }
 
   return (
     <ScrollView

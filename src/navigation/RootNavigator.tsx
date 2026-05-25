@@ -17,6 +17,7 @@ import { EpisodeBrowserScreen } from '@/screens/EpisodeBrowserScreen';
 import { GenreScreen } from '@/screens/GenreScreen';
 import { PlayerScreen } from '@/screens/PlayerScreen';
 import { TVDrawerContent } from '@/tv/TVDrawerContent';
+import { TVNavigationProvider, useTVNavigation } from '@/tv/TVNavigationContext';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -72,15 +73,21 @@ function Tabs() {
   );
 }
 
-function TvDrawer() {
+function TvDrawerInner() {
   const { colors } = useAppTheme();
+  const { widthAnim } = useTVNavigation();
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <TVDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'permanent',
-        drawerStyle: { width: 300, backgroundColor: colors.surface },
+        drawerStyle: {
+          width: widthAnim,
+          backgroundColor: colors.surface,
+          borderRightWidth: 0,
+        },
         drawerActiveTintColor: colors.text,
         drawerInactiveTintColor: colors.textMuted,
         swipeEnabled: false,
@@ -109,6 +116,14 @@ function TvDrawer() {
         }}
       />
     </Drawer.Navigator>
+  );
+}
+
+function TvDrawer() {
+  return (
+    <TVNavigationProvider>
+      <TvDrawerInner />
+    </TVNavigationProvider>
   );
 }
 

@@ -78,7 +78,10 @@ import { PlayerProgressBar } from '@/player/PlayerProgressBar';
 import { PlayerSettingsModal } from '@/player/PlayerSettingsModal';
 import { resolveStreamReadyState } from '@/player/streamAvailability';
 import { aspectRatioValue, formatAspectLabel } from '@/player/playerDisplay';
+import { TVPlayerControls } from '@/tv/TVPlayerControls';
 import { useAppTheme } from '@/theme/AppThemeProvider';
+
+const TV_HUD_HIDE_MS = 5000;
 
 const RATES = [0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -185,7 +188,9 @@ export function PlayerScreen() {
   const [position, setPosition] = useState(0);
   const [playableDuration, setPlayableDuration] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [hud, setHud] = useState(false);
+  const [hud, setHud] = useState(Platform.isTV);
+  const [seekHint, setSeekHint] = useState<'back' | 'forward' | null>(null);
+  const seekHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
   const [controlsLocked, setControlsLocked] = useState(false);
@@ -496,18 +501,37 @@ export function PlayerScreen() {
 
   const scheduleHudHide = useCallback(() => {
     clearHudTimer();
-    if (Platform.isTV || settingsOpen || episodeListOpen || paused || controlsLocked) return;
-    hudHideTimer.current = setTimeout(() => setHud(false), 5200);
+    if (settingsOpen || episodeListOpen || paused || controlsLocked) return;
+    const hideMs = Platform.isTV ? TV_HUD_HIDE_MS : 5200;
+    hudHideTimer.current = setTimeout(() => setHud(false), hideMs);
   }, [clearHudTimer, controlsLocked, episodeListOpen, paused, settingsOpen]);
 
+  const showTvHud = useCallback(() => {
+    setHud(true);
+    if (Platform.isTV) scheduleHudHide();
+  }, [scheduleHudHide]);
+
+  const flashSeekHint = useCallback((direction: 'back' | 'forward') => {
+    if (!Platform.isTV) return;
+    setSeekHint(direction);
+    if (seekHintTimer.current) clearTimeout(seekHintTimer.current);
+    seekHintTimer.current = setTimeout(() => setSeekHint(null), 900);
+  }, []);
+
   useEffect(() => {
-    if (!hud || Platform.isTV || settingsOpen || episodeListOpen || paused || controlsLocked) {
+    if (!hud || settingsOpen || episodeListOpen || paused || controlsLocked) {
       clearHudTimer();
       return;
     }
     scheduleHudHide();
     return clearHudTimer;
   }, [controlsLocked, episodeListOpen, hud, paused, scheduleHudHide, settingsOpen, clearHudTimer]);
+
+  // Show TV controls when playback begins.
+  useEffect(() => {
+    if (!isTV || !uri) return;
+    showTvHud();
+  }, [isTV, uri, showTvHud]);
 
   const goToEpisodeRef = useCallback(
     (ref: PlayerEpisodeRef) => {
@@ -625,8 +649,12 @@ export function PlayerScreen() {
   const seekBy = useCallback(
     (delta: number) => {
       seekTo(position + delta);
+      if (Platform.isTV) {
+        flashSeekHint(delta < 0 ? 'back' : 'forward');
+        showTvHud();
+      }
     },
-    [position, seekTo]
+    [flashSeekHint, position, seekTo, showTvHud]
   );
 
   const seekRatio = useCallback(
@@ -643,8 +671,9 @@ export function PlayerScreen() {
 
   const togglePlayback = useCallback(() => {
     setPaused((p) => !p);
-    if (!Platform.isTV) scheduleHudHide();
-  }, [scheduleHudHide]);
+    if (Platform.isTV) showTvHud();
+    else scheduleHudHide();
+  }, [scheduleHudHide, showTvHud]);
 
   useTVEventHandler(
     useCallback(
@@ -654,23 +683,26 @@ export function PlayerScreen() {
         switch (evt.eventType) {
           case 'playPause':
             setPaused((p) => !p);
+            showTvHud();
             break;
           case 'left':
-            seekBy(-10);
+            if (hud) seekBy(-10);
+            else {
+              seekBy(-10);
+            }
             break;
           case 'right':
             seekBy(10);
             break;
           case 'up':
-            setHud(true);
-            break;
           case 'down':
-            setHud(false);
+            showTvHud();
             break;
           case 'select':
-            setHud((visible) => !visible);
+            if (!hud) showTvHud();
             break;
           case 'menu':
+          case 'back':
             if (hud) {
               setHud(false);
             } else {
@@ -681,7 +713,7 @@ export function PlayerScreen() {
             break;
         }
       },
-      [controlsLocked, episodeListOpen, hud, isTV, navigation, seekBy, settingsOpen, uri]
+      [controlsLocked, episodeListOpen, hud, isTV, navigation, seekBy, settingsOpen, showTvHud, uri]
     ),
     isTV && !!uri
   );
@@ -1161,7 +1193,64 @@ export function PlayerScreen() {
         </View>
       ) : null}
 
-      {(!Platform.isTV && hud && paused) || (hud && !controlsLocked) ? (
+      {seekHint && isTV ? (
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFillObject, { zIndex: 20 }]}
+          className="items-center justify-center"
+        >
+          <View className="rounded-full bg-black/70 border border-white/20 px-8 py-5 flex-row items-center gap-3">
+            <Ionicons
+              name={seekHint === 'back' ? 'play-back' : 'play-forward'}
+              color="#fff"
+              size={28}
+            />
+            <Text className="text-white font-bold text-lg">10 sec</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {isTV && uri && hud && !controlsLocked ? (
+        <TVPlayerControls
+          visible
+          title={params.title}
+          episodeTitle={params.episodeTitle}
+          isTvEpisode={isTvEpisode}
+          season={params.season}
+          episode={params.episode}
+          paused={paused}
+          position={position}
+          duration={duration}
+          progress={progress}
+          bufferedProgress={bufferedProgress}
+          introEnd={introEnd}
+          tvNeighbors={tvNeighbors}
+          autoplayNextEpisode={autoplayNextEpisode}
+          nextPosterUri={nextPosterUri}
+          onClose={() => navigation.goBack()}
+          onTogglePlay={togglePlayback}
+          onSeekBack={() => seekBy(-10)}
+          onSeekForward={() => seekBy(10)}
+          onSeekRatio={seekRatio}
+          onScrubStart={onSeekStart}
+          onScrubEnd={onSeekEnd}
+          onOpenEpisodes={() => setEpisodeListOpen(true)}
+          onOpenSettings={openSettings}
+          onSkipIntro={() => seekTo(introEnd!)}
+          onPrevEpisode={() => tvNeighbors.prev && goToEpisodeRef(tvNeighbors.prev)}
+          onNextEpisode={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
+          onPlayNextNow={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
+          onDismissUpNext={() =>
+            navigation.setParams({ next: undefined } as Partial<PlayerRouteParams>)
+          }
+          formatDuration={formatDuration}
+          topPad={chromeTopPad}
+          bottomPad={chromeBottomPad}
+          horizontalPad={dockPadX}
+        />
+      ) : null}
+
+      {(!Platform.isTV && hud && paused) || (!Platform.isTV && hud && !controlsLocked) ? (
         <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { zIndex: 6 }]}>
           {!Platform.isTV && hud && paused ? (
             <Pressable

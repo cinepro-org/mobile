@@ -27,6 +27,8 @@ import { useTV } from '@/hooks/useTV';
 import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { DetailBackdropHero } from '@/components/DetailBackdropHero';
+import { TVDetailLayout } from '@/tv/TVDetailLayout';
+import { TVMediaRow } from '@/tv/TVMediaRow';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { TmdbSeasonSummary } from '@/api/types/tmdb';
@@ -43,7 +45,7 @@ export function TvDetailScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'TvDetail'>>();
   const { id } = route.params;
-  const { posterW, posterH, overscanX, sectionGap, heroH } = useResponsive();
+  const { posterW, posterH, overscanX, sectionGap, heroH, landscapeW, landscapeH } = useResponsive();
   const { colors, isDark } = useAppTheme();
   const ts = useThemedStyles();
   const [overviewExpanded, setOverviewExpanded] = useState(false);
@@ -191,6 +193,208 @@ export function TvDetailScreen() {
     navigation.goBack();
     return true;
   });
+
+  if (isTV) {
+    const metaChips = [
+      ...(d?.first_air_date ? [{ key: 'year', label: `Since ${d.first_air_date.slice(0, 4)}` }] : []),
+      ...(d?.number_of_seasons != null
+        ? [{ key: 'seasons', label: `${d.number_of_seasons} seasons`, icon: 'albums-outline' as const }]
+        : []),
+      ...(avgRuntime != null
+        ? [{ key: 'runtime', label: `~${avgRuntime} min / ep`, icon: 'time-outline' as const }]
+        : []),
+      ...(d?.vote_average != null
+        ? [{ key: 'rating', label: `${d.vote_average.toFixed(1)} TMDB`, icon: 'star' as const }]
+        : []),
+      ...(d?.genres ?? []).map((g) => ({ key: `genre-${g.id}`, label: g.name })),
+    ];
+
+    const hasResume = continueEpisode?.season != null && continueEpisode.episode != null;
+
+    return (
+      <TVDetailLayout
+        backdropUri={backdropUri}
+        title={d?.name ?? 'Series'}
+        tagline={d?.tagline}
+        overview={d?.overview}
+        metaChips={metaChips}
+        loading={loading}
+        onBack={() => navigation.goBack()}
+        primaryAction={
+          hasResume
+            ? {
+                key: 'resume',
+                label: 'Resume',
+                icon: 'play-circle',
+                onPress: () => {
+                  const epNum = continueEpisode!.episode!;
+                  const epTitle = continueEpisode!.episodeTitle ?? `Episode ${epNum}`;
+                  navigation.navigate(
+                    'Player',
+                    buildTvPlayerParams({
+                      tmdbId: id,
+                      seasonNumber: continueEpisode!.season!,
+                      episodeNumber: epNum,
+                      episodeTitle: epTitle,
+                      showTitle,
+                      episodes:
+                        continueEpisode!.season === selectedSeasonNumber && seasonEpisodes.length
+                          ? seasonEpisodes
+                          : [{ episode_number: epNum, name: epTitle }],
+                      posterPath: d?.poster_path,
+                      backdropPath: d?.backdrop_path,
+                      resumeSec: continueEpisode!.positionSec,
+                    })
+                  );
+                },
+                hasTVPreferredFocus: true,
+                accessibilityLabel: 'Resume watching',
+              }
+            : {
+                key: 'browse',
+                label: seasonEpisodes.length ? 'Browse episodes' : 'Series info',
+                icon: 'play',
+                onPress: () => {
+                  if (seasonEpisodes.length) playEpisode(seasonEpisodes[0].episode_number, seasonEpisodes[0].name);
+                },
+                hasTVPreferredFocus: true,
+              }
+        }
+        secondaryActions={[
+          {
+            key: 'watchlist',
+            label: 'Watchlist',
+            icon: inWatchlist ? 'bookmark' : 'bookmark-outline',
+            active: inWatchlist,
+            onPress: () =>
+              d &&
+              toggleWatchlist({
+                mediaType: 'tv',
+                tmdbId: d.id,
+                title: d.name,
+                posterPath: d.poster_path,
+              }),
+          },
+          {
+            key: 'favorite',
+            label: 'Favorite',
+            icon: inFavorites ? 'heart' : 'heart-outline',
+            active: inFavorites,
+            onPress: () =>
+              d &&
+              toggleFavorite({
+                mediaType: 'tv',
+                tmdbId: d.id,
+                title: d.name,
+                posterPath: d.poster_path,
+              }),
+          },
+        ]}
+      >
+        <View className="gap-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs uppercase tracking-widest" style={{ color: colors.textMuted }}>
+              Seasons
+            </Text>
+            {playableSeasons.length > 0 ? (
+              <FocusSurface className="py-1 px-1" collapseTVNavOnFocus onPress={openSeasonBrowser}>
+                <Text className="text-xs font-bold" style={{ color: colors.accent }}>
+                  Full list
+                </Text>
+              </FocusSurface>
+            ) : null}
+          </View>
+
+          {playableSeasons.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {playableSeasons.map((season) => {
+                const active = season.season_number === selectedSeasonNumber;
+                return (
+                  <FocusSurface
+                    key={season.id}
+                    className="rounded-full px-5 py-3"
+                    style={active ? ts.chipActive : ts.chip}
+                    collapseTVNavOnFocus
+                    onPress={() => selectSeason(season.season_number)}
+                    accessibilityLabel={season.name}
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      className="font-bold text-sm"
+                      style={{ color: active ? colors.textOnAccent : colors.text }}
+                    >
+                      {seasonChipLabel(season)}
+                    </Text>
+                  </FocusSurface>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          {seasonDetail.isLoading ? (
+            <ActivityIndicator color={colors.accent} size="large" style={{ marginVertical: 24 }} />
+          ) : (
+            <View className="gap-3">
+              {seasonEpisodes.map((item, index) => {
+                const uri = tmdbImg(item.still_path ?? d?.poster_path, 'w500');
+                const isContinue =
+                  continueEpisode?.season === selectedSeasonNumber &&
+                  continueEpisode.episode === item.episode_number;
+
+                return (
+                  <FocusSurface
+                    key={item.id}
+                    className="rounded-2xl overflow-hidden"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: isContinue ? colors.accentBorder : colors.border,
+                      backgroundColor: isContinue ? colors.accentSoft : colors.inputBg,
+                    }}
+                    focusVariant={isContinue ? 'accent' : 'card'}
+                    collapseTVNavOnFocus
+                    hasTVPreferredFocus={!hasResume && index === 0}
+                    onPress={() => playEpisode(item.episode_number, item.name)}
+                    accessibilityLabel={`Play episode ${item.episode_number} ${item.name}`}
+                  >
+                    <View className="flex-row">
+                      <Image
+                        source={uri ? { uri } : undefined}
+                        style={{ width: 160, height: 90 }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                      />
+                      <View className="flex-1 p-4 justify-center">
+                        <Text className="font-semibold" style={{ color: colors.text }} numberOfLines={2}>
+                          E{item.episode_number}: {item.name}
+                        </Text>
+                        {item.overview ? (
+                          <Text className="text-sm mt-1.5" style={{ color: colors.textMuted }} numberOfLines={2}>
+                            {item.overview}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  </FocusSurface>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        <View style={{ marginTop: sectionGap * 2 }}>
+          <TVMediaRow
+            title="Similar series"
+            data={recModels}
+            cardW={landscapeW}
+            cardH={landscapeH}
+            isLoading={rec.isLoading}
+            onSelect={(item) => navigation.navigate('TvDetail', { id: item.id })}
+            horizontalPadding={0}
+          />
+        </View>
+      </TVDetailLayout>
+    );
+  }
 
   return (
     <ScrollView

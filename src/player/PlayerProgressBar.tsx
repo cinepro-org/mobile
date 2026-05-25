@@ -3,6 +3,7 @@ import { LayoutChangeEvent, PanResponder, Platform, Pressable, Text, View } from
 import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BRAND_ACCENT } from '@/theme/colors';
+import { FocusSurface } from '@/tv/FocusSurface';
 
 type Props = {
   progress: number;
@@ -174,15 +175,15 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
       ) : null}
 
       {isTv ? (
-        <Pressable
-          accessibilityRole="adjustable"
+        <FocusSurface
+          focusVariant="onMedia"
           accessibilityLabel="Seek along timeline"
           style={{ height: touchH, justifyContent: 'center' }}
           onLayout={onBarLayout}
           onPress={(e) => seekFromX(e.nativeEvent.locationX)}
         >
           <View pointerEvents="none">{trackContent}</View>
-        </Pressable>
+        </FocusSurface>
       ) : (
         <View style={{ height: touchH, justifyContent: 'center' }} onLayout={onBarLayout} {...pan.panHandlers}>
           {trackContent}

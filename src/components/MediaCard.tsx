@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FocusSurface } from '@/tv/FocusSurface';
@@ -39,6 +39,7 @@ export const MediaCard = memo(function MediaCard({
     <FocusSurface
       onPress={onPress}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      collapseTVNavOnFocus={Platform.isTV}
       focusVariant="card"
       className="rounded-2xl overflow-hidden"
       style={focusedGlow ? { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 16 } : undefined}

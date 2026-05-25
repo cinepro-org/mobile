@@ -10,7 +10,12 @@ type FocusColors = {
 
 export function idleBorderStyle(variant: FocusVariant, colors: FocusColors): ViewStyle {
   if (variant === 'card') {
-    return { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 16 };
+    return {
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      borderRadius: 16,
+      ...(Platform.isTV ? { shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 14, elevation: 10 } : {}),
+    };
   }
   if (variant === 'onMedia') {
     return { borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 999 };

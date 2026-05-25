@@ -11,6 +11,8 @@ import {
   rowPosterWidth,
   spacing,
   isTVLike,
+  tvLandscapeCardWidth,
+  tvLandscapeCardHeight,
 } from '@/utils/layout';
 
 export function useResponsive() {
@@ -29,6 +31,8 @@ export function useResponsive() {
       overscanX: overscanHorizontal(),
       overscanY: overscanVertical(),
       fontScale,
+      landscapeW: tvLandscapeCardWidth(),
+      landscapeH: tvLandscapeCardHeight(),
       windowWidth: width,
       windowHeight: height,
     }),

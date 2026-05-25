@@ -81,6 +81,22 @@ export function rowPosterHeight(): number {
   return Math.round((w * 3) / 2);
 }
 
+/** 16:9 landscape cards for Android TV content rows. */
+export function tvLandscapeCardWidth(): number {
+  switch (deviceClass()) {
+    case 'tv4k':
+      return 340;
+    case 'tv1080':
+      return 280;
+    default:
+      return 220;
+  }
+}
+
+export function tvLandscapeCardHeight(): number {
+  return Math.round(tvLandscapeCardWidth() / (16 / 9));
+}
+
 export function heroHeight(): number {
   const { height } = getWindow();
   const dc = deviceClass();

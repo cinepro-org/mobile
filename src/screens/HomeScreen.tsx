@@ -14,6 +14,10 @@ import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { TVHomeHero } from '@/tv/TVHomeHero';
+import { TVMediaRow } from '@/tv/TVMediaRow';
+import { TVContentArea } from '@/tv/TVContentArea';
+import { useTV } from '@/hooks/useTV';
 import type { TmdbGenre, TmdbMovieListResult, TmdbTvListResult } from '@/api/types/tmdb';
 
 function mapMovie(m: TmdbMovieListResult): MediaCardModel {
@@ -42,7 +46,8 @@ export function HomeScreen() {
   const navigation = useAppNavigation();
   const { colors } = useAppTheme();
   const ts = useThemedStyles();
-  const { posterW, posterH, heroH, overscanX, sectionGap } = useResponsive();
+  const isTV = useTV();
+  const { posterW, posterH, heroH, overscanX, sectionGap, landscapeW, landscapeH } = useResponsive();
   const hasTmdb = useHasConfiguredTmdbKey();
   const trendingMovies = useQuery({
     queryKey: qk.trendingMovies(1),
@@ -90,6 +95,19 @@ export function HomeScreen() {
     [navigation]
   );
 
+  const onPlayHero = useCallback(
+    (item: MediaCardModel) => {
+      navigation.navigate('Player', {
+        title: item.title,
+        mediaType: item.mediaType ?? 'movie',
+        tmdbId: item.id,
+        posterPath: item.posterPath,
+        backdropPath: item.backdropPath,
+      });
+    },
+    [navigation]
+  );
+
   const onSelect = useCallback(
     (item: MediaCardModel) => {
       navigation.navigate('MovieDetail', { id: item.id });
@@ -117,6 +135,104 @@ export function HomeScreen() {
     trendingMovies.isFetching || trendingTv.isFetching || discoverMovies.isFetching || genres.isFetching;
 
   const hp = Math.max(overscanX, 16);
+
+  if (isTV) {
+    return (
+      <TVContentArea className="flex-1" style={{ backgroundColor: colors.ink }}>
+        <ScrollView
+          className="flex-1"
+          style={{ backgroundColor: colors.ink }}
+          contentContainerStyle={{ paddingBottom: sectionGap * 8 }}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.accent} />
+          }
+        >
+          <TVHomeHero
+            heroHeight={heroH}
+            horizontalPadding={hp}
+            items={heroItems}
+            onOpenActive={onOpenHero}
+            onPlayActive={onPlayHero}
+          />
+
+          {!hasTmdb ? (
+            <View style={{ marginTop: sectionGap * 2, paddingHorizontal: hp }}>
+              <MissingKeysBanner onOpenSettings={() => navigation.navigate('Settings' as never)} />
+            </View>
+          ) : null}
+
+          {genreChips.length ? (
+            <View style={{ marginTop: sectionGap * 2, paddingHorizontal: hp }}>
+              <ThemedText variant="eyebrow" className="mb-2">
+                DISCOVER
+              </ThemedText>
+              <ThemedText variant="title" className="text-xl mb-4">
+                Browse by genre
+              </ThemedText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {genreChips.map((item: TmdbGenre) => (
+                  <FocusSurface
+                    key={item.id}
+                    className="rounded-full px-6 py-3"
+                    style={ts.chip}
+                    focusVariant="subtle"
+                    collapseTVNavOnFocus
+                    onPress={() =>
+                      navigation.navigate('Genre', {
+                        genreId: item.id,
+                        genreName: item.name,
+                        mediaType: 'movie',
+                      })
+                    }
+                    accessibilityLabel={`Genre ${item.name}`}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+                      {item.name}
+                    </Text>
+                  </FocusSurface>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+
+          <View style={{ marginTop: sectionGap * 2.5 }}>
+            <TVMediaRow
+              eyebrow="THIS WEEK"
+              title="Trending movies"
+              data={(trendingMovies.data?.results ?? []).map(mapMovie)}
+              cardW={landscapeW}
+              cardH={landscapeH}
+              isLoading={trendingMovies.isLoading}
+              onSelect={onSelect}
+              horizontalPadding={hp}
+            />
+            <TVMediaRow
+              eyebrow="ON AIR"
+              title="Trending series"
+              data={(trendingTv.data?.results ?? []).map(mapTv)}
+              cardW={landscapeW}
+              cardH={landscapeH}
+              isLoading={trendingTv.isLoading}
+              onSelect={onSelectTv}
+              horizontalPadding={hp}
+            />
+            <TVMediaRow
+              eyebrow="DISCOVER"
+              title="Popular picks"
+              data={(discoverMovies.data?.results ?? []).map(mapMovie)}
+              cardW={landscapeW}
+              cardH={landscapeH}
+              isLoading={discoverMovies.isLoading}
+              onSelect={onSelect}
+              horizontalPadding={hp}
+            />
+          </View>
+        </ScrollView>
+      </TVContentArea>
+    );
+  }
 
   return (
     <ScrollView
