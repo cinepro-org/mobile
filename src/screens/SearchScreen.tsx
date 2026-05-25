@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TmdbApi, TmdbHttpError } from '@/api/tmdbClient';
@@ -15,6 +15,8 @@ import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { GRID_LIST_SIDE_PADDING } from '@/utils/layout';
 import { ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
 import { useAppTheme } from '@/theme/AppThemeProvider';
+import { focusedRingStyle } from '@/tv/focusStyles';
+import { useTV } from '@/hooks/useTV';
 
 function toModel(hit: TmdbMultiSearchResult): MediaCardModel | null {
   if (hit.media_type === 'movie') {
@@ -44,6 +46,8 @@ export function SearchScreen() {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
+  const isTV = useTV();
+  const [inputFocused, setInputFocused] = useState(false);
   const { overscanX } = useResponsive();
   const ts = useThemedStyles();
   const [q, setQ] = useState('');
@@ -132,10 +136,16 @@ export function SearchScreen() {
           placeholder="Titles, people, keywords…"
           placeholderTextColor={ts.placeholder}
           className="rounded-2xl px-4 py-3"
-          style={ts.input}
+          style={[
+            ts.input,
+            Platform.isTV && inputFocused ? focusedRingStyle('subtle', colors, true) : undefined,
+          ]}
           accessibilityLabel="Search catalog"
           autoCorrect={false}
           returnKeyType="search"
+          hasTVPreferredFocus={isTV}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
         />
       </View>
 

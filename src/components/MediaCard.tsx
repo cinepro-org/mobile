@@ -21,6 +21,7 @@ type Props = {
   height: number;
   onPress: () => void;
   focusedGlow?: boolean;
+  hasTVPreferredFocus?: boolean;
 };
 
 export const MediaCard = memo(function MediaCard({
@@ -29,6 +30,7 @@ export const MediaCard = memo(function MediaCard({
   height,
   onPress,
   focusedGlow = true,
+  hasTVPreferredFocus,
 }: Props) {
   const { colors, isDark } = useAppTheme();
   const uri = tmdbImg(item.posterPath, 'w342');
@@ -36,6 +38,8 @@ export const MediaCard = memo(function MediaCard({
   return (
     <FocusSurface
       onPress={onPress}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      focusVariant="card"
       className="rounded-2xl overflow-hidden"
       style={focusedGlow ? { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 16 } : undefined}
       accessibilityLabel={`${item.title}${item.subtitle ? `, ${item.subtitle}` : ''}`}

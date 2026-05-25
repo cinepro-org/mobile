@@ -111,16 +111,33 @@ Then press `a` (Android), `i` (iOS), or `w` (web) in the terminal, or scan the Q
 |--------|-------------|
 | `npm start` | Start Expo / Metro dev server |
 | `npm run android` | Debug build and install on device/emulator |
-| `npm run android:release` | Release variant via Expo (`expo run:android --variant release`) |
+| `npm run android:run:release` | Install release variant on a connected device/emulator |
+| `npm run android:release` | **Release APKs for phone + Android TV** → `dist/cinepro-phone-release.apk` and `dist/cinepro-tv-release.apk` |
+| `npm run android:release:phone` | Phone release APK only |
+| `npm run android:release:tv` | Android TV release APK only |
 | `npm run ios` | Debug build on iOS simulator/device (macOS) |
 | `npm run web` | Run in the browser |
-| `npm run android:apk` | Release APK via Gradle (`android/gradlew.bat assembleRelease`) |
-| `npm run android:apk:subst` | Same APK build via SUBST drive (Windows path-length fix) |
-| `npm run android:bundle:subst` | Release AAB (`bundleRelease`) with SUBST drive |
+| `npm run android:apk` | Release APK via Gradle (`android/gradlew.bat assembleRelease`) — requires prebuild first |
+| `npm run android:apk:subst` | Phone release APK via SUBST drive (Windows path-length fix) |
+| `npm run android:bundle:subst` | Phone release AAB with SUBST drive |
+| `npm run android:bundle:release` | Phone + TV release AABs |
 
 ### Android release APK (Windows)
 
-Deep paths (e.g. under `Desktop`) can hit Windows’ ~260 character limit during native codegen. Use the SUBST helper:
+Deep paths (e.g. under `Desktop`) can hit Windows’ ~260 character limit during native codegen. The release scripts use a SUBST drive automatically.
+
+**Phone + TV (recommended):**
+
+```powershell
+npm run android:release
+```
+
+Outputs:
+
+- `dist/cinepro-phone-release.apk`
+- `dist/cinepro-tv-release.apk`
+
+**Phone only:**
 
 ```powershell
 npm run android:apk:subst
@@ -135,7 +152,21 @@ npm run android:apk:subst
 
 Output APK (typical path):
 
-`android/app/build/outputs/apk/release/app-release.apk`
+`dist/cinepro-phone-release.apk` (or `dist/cinepro-tv-release.apk` when using `npm run android:release:tv`)
+
+### Android TV builds
+
+This project uses [`react-native-tvos`](https://github.com/react-native-tvos/react-native-tvos) so one dependency supports **both phone and Android TV**. The `@react-native-tvos/config-tv` plugin applies TV manifest changes when `EXPO_TV=1` during prebuild (handled automatically by the release scripts).
+
+For local TV development:
+
+```powershell
+$env:EXPO_TV = "1"
+npx expo prebuild --clean --platform android
+npm run android
+```
+
+Unset `EXPO_TV` and prebuild again to return to phone-only native files.
 
 ### Android release (macOS / Linux)
 

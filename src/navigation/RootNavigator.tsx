@@ -16,6 +16,7 @@ import { TvDetailScreen } from '@/screens/TvDetailScreen';
 import { EpisodeBrowserScreen } from '@/screens/EpisodeBrowserScreen';
 import { GenreScreen } from '@/screens/GenreScreen';
 import { PlayerScreen } from '@/screens/PlayerScreen';
+import { TVDrawerContent } from '@/tv/TVDrawerContent';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -75,12 +76,14 @@ function TvDrawer() {
   const { colors } = useAppTheme();
   return (
     <Drawer.Navigator
+      drawerContent={(props) => <TVDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'permanent',
         drawerStyle: { width: 300, backgroundColor: colors.surface },
         drawerActiveTintColor: colors.text,
         drawerInactiveTintColor: colors.textMuted,
+        swipeEnabled: false,
       }}
     >
       <Drawer.Screen

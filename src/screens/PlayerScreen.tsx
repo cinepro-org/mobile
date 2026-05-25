@@ -55,7 +55,9 @@ import {
   type ContinuePlayback,
 } from '@/store/libraryStore';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { useTVEventHandler } from '@/tv/useTVEventHandler';
 import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
+import { useTV } from '@/hooks/useTV';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { tmdbImg } from '@/services/tmdbImages';
@@ -135,6 +137,7 @@ export function PlayerScreen() {
   usePlayerOrientation(true);
   const { colors } = useAppTheme();
   const navigation = useAppNavigation();
+  const isTV = useTV();
   const route = useRoute<RouteProp<RootStackParamList, 'Player'>>();
   const params = route.params;
   const insets = useSafeAreaInsets();
@@ -182,7 +185,7 @@ export function PlayerScreen() {
   const [position, setPosition] = useState(0);
   const [playableDuration, setPlayableDuration] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [hud, setHud] = useState(Platform.isTV);
+  const [hud, setHud] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
   const [controlsLocked, setControlsLocked] = useState(false);
@@ -562,6 +565,10 @@ export function PlayerScreen() {
       setSettingsOpen(false);
       return true;
     }
+    if (isTV && hud) {
+      setHud(false);
+      return true;
+    }
     navigation.goBack();
     return true;
   });
@@ -638,6 +645,46 @@ export function PlayerScreen() {
     setPaused((p) => !p);
     if (!Platform.isTV) scheduleHudHide();
   }, [scheduleHudHide]);
+
+  useTVEventHandler(
+    useCallback(
+      (evt) => {
+        if (!isTV || settingsOpen || episodeListOpen || controlsLocked || !uri) return;
+
+        switch (evt.eventType) {
+          case 'playPause':
+            setPaused((p) => !p);
+            break;
+          case 'left':
+            seekBy(-10);
+            break;
+          case 'right':
+            seekBy(10);
+            break;
+          case 'up':
+            setHud(true);
+            break;
+          case 'down':
+            setHud(false);
+            break;
+          case 'select':
+            setHud((visible) => !visible);
+            break;
+          case 'menu':
+            if (hud) {
+              setHud(false);
+            } else {
+              navigation.goBack();
+            }
+            break;
+          default:
+            break;
+        }
+      },
+      [controlsLocked, episodeListOpen, hud, isTV, navigation, seekBy, settingsOpen, uri]
+    ),
+    isTV && !!uri
+  );
 
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
   const bufferedProgress =
@@ -1044,21 +1091,25 @@ export function PlayerScreen() {
             </Text>
           </View>
           {streamState.status === 'no_core' ? (
-            <Pressable
+            <FocusSurface
               onPress={() => navigation.navigate('Settings')}
               className="rounded-full bg-accent px-8 py-3.5 active:opacity-90 shadow-lg"
+              focusVariant="accent"
+              hasTVPreferredFocus={isTV}
               accessibilityLabel="Open settings"
             >
               <Text className="text-white font-bold text-[15px]">Open Settings</Text>
-            </Pressable>
+            </FocusSurface>
           ) : (
-            <Pressable
+            <FocusSurface
               onPress={() => omss.refetch()}
               className="rounded-full bg-accent px-8 py-3.5 active:opacity-90 shadow-lg"
+              focusVariant="accent"
+              hasTVPreferredFocus={isTV}
               accessibilityLabel="Retry loading streams"
             >
               <Text className="text-white font-bold text-[15px]">Try again</Text>
-            </Pressable>
+            </FocusSurface>
           )}
         </View>
       )}
@@ -1163,6 +1214,7 @@ export function PlayerScreen() {
                 <FocusSurface
                   className="rounded-full items-center justify-center bg-accent active:opacity-90"
                   style={{ width: circleBtn, height: circleBtn }}
+                  focusVariant="onMedia"
                   hitSlop={iconHitSlop}
                   onPress={() => navigation.goBack()}
                   accessibilityLabel="Close player"
@@ -1240,22 +1292,26 @@ export function PlayerScreen() {
                       </View>
                     </View>
                     <View className="flex-row border-t border-white/10">
-                      <Pressable
+                      <FocusSurface
                         className="flex-1 py-3 border-r border-white/10"
+                        focusVariant="accent"
                         onPress={() => goToEpisodeRef(tvNeighbors.next!)}
+                        accessibilityLabel="Play next episode now"
                       >
                         <Text className="text-accent text-center font-bold text-[13px]">Play now</Text>
-                      </Pressable>
-                      <Pressable
+                      </FocusSurface>
+                      <FocusSurface
                         className="flex-1 py-3"
+                        focusVariant="subtle"
                         onPress={() =>
                           navigation.setParams({
                             next: undefined,
                           } as Partial<PlayerRouteParams>)
                         }
+                        accessibilityLabel="Dismiss up next"
                       >
                         <Text className="text-white/70 text-center font-semibold text-[13px]">Dismiss</Text>
-                      </Pressable>
+                      </FocusSurface>
                     </View>
                   </View>
                 ) : null}
@@ -1328,10 +1384,12 @@ export function PlayerScreen() {
                   </FocusSurface>
 
                   <FocusSurface
-                    className="rounded-full items-center justify-center bg-accent active:opacity-90 shadow-lg shadow-black/40"
+                    className="rounded-full items-center justify-center bg-accent active:opacity-90"
                     style={{ width: circleBtnLg, height: circleBtnLg }}
+                    focusVariant="onMedia"
                     hitSlop={iconHitSlop}
                     onPress={togglePlayback}
+                    hasTVPreferredFocus={isTV && hud}
                     accessibilityLabel={paused ? 'Play' : 'Pause'}
                   >
                     <Ionicons

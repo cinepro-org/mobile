@@ -37,6 +37,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "@react-native-tvos/config-tv",
       [
         "expo-splash-screen",
         {

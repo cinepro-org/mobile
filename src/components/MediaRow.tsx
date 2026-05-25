@@ -14,6 +14,8 @@ type Props = {
   posterH: number;
   isLoading?: boolean;
   onSelect: (item: MediaCardModel) => void;
+  /** Focus the first card when this row mounts (e.g. first row on a screen). */
+  preferFirstFocus?: boolean;
 };
 
 export const MediaRow = memo(function MediaRow({
@@ -24,14 +26,21 @@ export const MediaRow = memo(function MediaRow({
   posterH,
   isLoading,
   onSelect,
+  preferFirstFocus,
 }: Props) {
   const renderItem = useCallback(
-    ({ item }: { item: MediaCardModel }) => (
+    ({ item, index }: { item: MediaCardModel; index: number }) => (
       <View style={{ marginRight: 14 }}>
-        <MediaCard item={item} width={posterW} height={posterH} onPress={() => onSelect(item)} />
+        <MediaCard
+          item={item}
+          width={posterW}
+          height={posterH}
+          onPress={() => onSelect(item)}
+          hasTVPreferredFocus={preferFirstFocus && index === 0}
+        />
       </View>
     ),
-    [onSelect, posterH, posterW]
+    [onSelect, posterH, posterW, preferFirstFocus]
   );
 
   if (isLoading) {
@@ -51,6 +60,7 @@ export const MediaRow = memo(function MediaRow({
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         showsHorizontalScrollIndicator={false}
+        removeClippedSubviews={false}
         style={{ height: posterH + 8 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 2 }}
       />

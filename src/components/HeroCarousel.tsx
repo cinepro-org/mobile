@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -19,6 +19,7 @@ type Props = {
   items: MediaCardModel[];
   overscanX: number;
   onOpenActive?: (item: MediaCardModel) => void;
+  preferFocus?: boolean;
 };
 
 export const HeroCarousel = memo(function HeroCarousel({
@@ -26,23 +27,37 @@ export const HeroCarousel = memo(function HeroCarousel({
   items,
   overscanX,
   onOpenActive,
+  preferFocus,
 }: Props) {
   const { colors } = useAppTheme();
   const [index, setIndex] = useState(0);
+  const [heroFocused, setHeroFocused] = useState(false);
   const opacity = useSharedValue(1);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const slides = useMemo(() => items.slice(0, 6), [items]);
   const active = slides.length ? slides[index % slides.length] : undefined;
 
   useEffect(() => {
-    if (!slides.length) return;
-    const id = setInterval(() => {
+    if (!slides.length || heroFocused) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    intervalRef.current = setInterval(() => {
       opacity.value = 0;
       setIndex((i) => (i + 1) % slides.length);
       opacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
     }, 8500);
-    return () => clearInterval(id);
-  }, [opacity, slides]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [heroFocused, opacity, slides]);
 
   useEffect(() => {
     if (!slides.length) {
@@ -140,6 +155,10 @@ export const HeroCarousel = memo(function HeroCarousel({
                     <FocusSurface
                       className="rounded-full flex-row items-center gap-2 px-5 py-2.5"
                       style={{ backgroundColor: colors.accent }}
+                      focusVariant="accent"
+                      hasTVPreferredFocus={preferFocus}
+                      onFocus={() => setHeroFocused(true)}
+                      onBlur={() => setHeroFocused(false)}
                       onPress={() => onOpenActive(active)}
                       accessibilityLabel={`Open ${active.title}`}
                     >

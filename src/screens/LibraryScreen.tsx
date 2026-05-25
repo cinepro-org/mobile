@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native';
 import { MediaRow } from '@/components/MediaRow';
 import type { MediaCardModel } from '@/components/MediaCard';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useTV } from '@/hooks/useTV';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
@@ -12,6 +13,7 @@ export function LibraryScreen() {
   const navigation = useAppNavigation();
   const { colors } = useAppTheme();
   const { posterW, posterH, sectionGap } = useResponsive();
+  const isTV = useTV();
   const watchlist = useLibraryStore((s) => s.watchlist);
   const favorites = useLibraryStore((s) => s.favorites);
   const continueWatching = useLibraryStore((s) => s.continueWatching);
@@ -76,9 +78,26 @@ export function LibraryScreen() {
         posterW={posterW}
         posterH={posterH}
         onSelect={onPick}
+        preferFirstFocus={isTV && continueModels.length > 0}
       />
-      <MediaRow title="Watchlist" data={wlModels} posterW={posterW} posterH={posterH} onSelect={onPick} />
-      <MediaRow title="Favorites" data={favModels} posterW={posterW} posterH={posterH} onSelect={onPick} />
+      <MediaRow
+        title="Watchlist"
+        data={wlModels}
+        posterW={posterW}
+        posterH={posterH}
+        onSelect={onPick}
+        preferFirstFocus={isTV && continueModels.length === 0 && wlModels.length > 0}
+      />
+      <MediaRow
+        title="Favorites"
+        data={favModels}
+        posterW={posterW}
+        posterH={posterH}
+        onSelect={onPick}
+        preferFirstFocus={
+          isTV && continueModels.length === 0 && wlModels.length === 0 && favModels.length > 0
+        }
+      />
     </ScrollView>
   );
 }

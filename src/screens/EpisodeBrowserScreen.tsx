@@ -12,6 +12,8 @@ import { Image } from 'expo-image';
 import { tmdbImg } from '@/services/tmdbImages';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
+import { useTV } from '@/hooks/useTV';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
@@ -25,6 +27,7 @@ export function EpisodeBrowserScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'EpisodeBrowser'>>();
   const { id, seasonNumber, title } = route.params;
   const { overscanX, sectionGap } = useResponsive();
+  const isTV = useTV();
   const { colors } = useAppTheme();
   const hasTmdb = useHasConfiguredTmdbKey();
   const cineproBaseUrl = useSettingsStore((s) => s.cineproBaseUrl);
@@ -55,7 +58,7 @@ export function EpisodeBrowserScreen() {
   });
 
   const renderItem = useCallback(
-    ({ item }: { item: (typeof episodes)[number] }) => {
+    ({ item }: { item: (typeof episodes)[number]; index: number }) => {
       const uri = tmdbImg(item.still_path ?? show.data?.poster_path, 'w500');
       const epQuery = episodeQueryByNumber.get(item.episode_number);
       const epState = epQuery ? resolveStreamReadyState(coreConfigured, epQuery) : null;
@@ -70,6 +73,7 @@ export function EpisodeBrowserScreen() {
             borderColor: colors.border,
             borderWidth: 1,
           }}
+          focusVariant="card"
           onPress={() => playEpisode(item.episode_number, item.name)}
           accessibilityLabel={`Play episode ${item.episode_number} ${item.name}`}
         >
@@ -106,10 +110,15 @@ export function EpisodeBrowserScreen() {
 
   const listData = useMemo(() => episodes, [episodes]);
 
+  useAndroidTVBack(() => {
+    navigation.goBack();
+    return true;
+  });
+
   return (
     <ThemedScreen className="pt-14">
       <View style={{ paddingHorizontal: overscanX }} className="flex-row items-center mb-4 gap-3">
-        <ThemedBackButton onPress={() => navigation.goBack()} />
+        <ThemedBackButton onPress={() => navigation.goBack()} hasTVPreferredFocus={isTV} />
         <ThemedText variant="title" className="text-xl flex-1" numberOfLines={2}>
           {title ?? `Season ${seasonNumber}`}
         </ThemedText>
@@ -120,6 +129,7 @@ export function EpisodeBrowserScreen() {
         renderItem={renderItem}
         keyExtractor={(e) => String(e.id)}
         style={{ flex: 1 }}
+        removeClippedSubviews={false}
         ListHeaderComponent={
           <View className="px-6 mb-3" style={{ marginBottom: sectionGap }}>
             <ThemedText variant="muted">

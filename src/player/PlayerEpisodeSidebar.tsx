@@ -1,11 +1,12 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { TmdbEpisode } from '@/api/types/tmdb';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
 import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 
@@ -35,8 +36,16 @@ export function PlayerEpisodeSidebar({
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
 
+  useAndroidTVBack(() => {
+    if (visible) {
+      onClose();
+      return true;
+    }
+    return false;
+  });
+
   const renderItem = useCallback(
-    ({ item }: { item: TmdbEpisode }) => {
+    ({ item, index }: { item: TmdbEpisode; index: number }) => {
       const active = item.episode_number === currentEpisode;
       const resumeSec = resumeByEpisode?.[item.episode_number];
       const thumb = tmdbImg(item.still_path, 'w342');
@@ -48,6 +57,8 @@ export function PlayerEpisodeSidebar({
             borderColor: active ? colors.accent : colors.playerHudBorder,
             backgroundColor: active ? colors.accentSoft : 'rgba(255,255,255,0.08)',
           }}
+          focusVariant={active ? 'accent' : 'subtle'}
+          hasTVPreferredFocus={visible && index === 0}
           onPress={() => onSelectEpisode(item.episode_number, item.name)}
           accessibilityLabel={`Episode ${item.episode_number} ${item.name}`}
           accessibilityState={{ selected: active }}
@@ -86,13 +97,20 @@ export function PlayerEpisodeSidebar({
         </FocusSurface>
       );
     },
-    [colors, currentEpisode, onSelectEpisode, resumeByEpisode]
+    [colors, currentEpisode, onSelectEpisode, resumeByEpisode, visible]
   );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View className="flex-1 flex-row">
-        <Pressable className="flex-1 bg-black/65" onPress={onClose} accessibilityLabel="Close episode list" />
+        <FocusSurface
+          className="flex-1 bg-black/65"
+          onPress={onClose}
+          focusVariant="subtle"
+          accessibilityLabel="Close episode list backdrop"
+        >
+          <View className="flex-1" />
+        </FocusSurface>
         <View
           className="h-full border-l"
           style={{
@@ -114,6 +132,7 @@ export function PlayerEpisodeSidebar({
                 backgroundColor: 'rgba(255,255,255,0.12)',
                 borderColor: colors.playerHudBorder,
               }}
+              focusVariant="onMedia"
               onPress={onClose}
               accessibilityLabel="Close"
             >

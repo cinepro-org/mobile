@@ -22,6 +22,8 @@ import { useLibraryStore, mediaStorageKey } from '@/store/libraryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
+import { useTV } from '@/hooks/useTV';
 import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { DetailBackdropHero } from '@/components/DetailBackdropHero';
@@ -37,6 +39,7 @@ export function MovieDetailScreen() {
   const { colors, isDark } = useAppTheme();
   const ts = useThemedStyles();
   const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const isTV = useTV();
   const cineproBaseUrl = useSettingsStore((s) => s.cineproBaseUrl);
   const hasTmdb = useHasConfiguredTmdbKey();
 
@@ -131,6 +134,11 @@ export function MovieDetailScreen() {
   };
 
   const hp = Math.max(overscanX, 16);
+
+  useAndroidTVBack(() => {
+    navigation.goBack();
+    return true;
+  });
 
   return (
     <ScrollView
@@ -271,6 +279,8 @@ export function MovieDetailScreen() {
                         ? ts.accentButton
                         : { ...ts.secondaryButton, paddingVertical: 16 }
                     }
+                    focusVariant="accent"
+                    hasTVPreferredFocus={isTV}
                     onPress={onPlay}
                     accessibilityLabel={
                       streamState.status === 'loading'

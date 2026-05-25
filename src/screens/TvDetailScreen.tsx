@@ -22,6 +22,8 @@ import { buildTvPlayerParams } from '@/player/playerEpisodeNav';
 import { usePlayTvEpisode } from '@/player/usePlayTvEpisode';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
+import { useTV } from '@/hooks/useTV';
 import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { DetailBackdropHero } from '@/components/DetailBackdropHero';
@@ -45,6 +47,7 @@ export function TvDetailScreen() {
   const { colors, isDark } = useAppTheme();
   const ts = useThemedStyles();
   const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const isTV = useTV();
   const hasTmdb = useHasConfiguredTmdbKey();
   const cineproBaseUrl = useSettingsStore((s) => s.cineproBaseUrl);
   const coreConfigured = !!cineproBaseUrl.trim();
@@ -183,6 +186,11 @@ export function TvDetailScreen() {
   };
 
   const hp = Math.max(overscanX, 16);
+
+  useAndroidTVBack(() => {
+    navigation.goBack();
+    return true;
+  });
 
   return (
     <ScrollView
@@ -327,6 +335,8 @@ export function TvDetailScreen() {
                   <FocusSurface
                     className="mt-6 rounded-2xl py-4 px-4 flex-row items-center gap-3 active:opacity-90"
                     style={ts.accentButton}
+                    focusVariant="accent"
+                    hasTVPreferredFocus={isTV}
                     onPress={() => {
                       const epNum = continueEpisode.episode!;
                       const epTitle =
@@ -443,7 +453,7 @@ export function TvDetailScreen() {
                     </Text>
                   ) : (
                     <View className="gap-2.5">
-                      {seasonEpisodes.map((item) => {
+                      {seasonEpisodes.map((item, index) => {
                         const uri = tmdbImg(item.still_path ?? d?.poster_path, 'w500');
                         const epQuery = episodeQueryByNumber.get(item.episode_number);
                         const epState = epQuery ? resolveStreamReadyState(coreConfigured, epQuery) : null;
@@ -462,6 +472,12 @@ export function TvDetailScreen() {
                               borderColor: isContinue ? colors.accentBorder : colors.border,
                               backgroundColor: isContinue ? colors.accentSoft : colors.inputBg,
                             }}
+                            focusVariant={isContinue ? 'accent' : 'card'}
+                            hasTVPreferredFocus={
+                              isTV &&
+                              !(continueEpisode?.season != null && continueEpisode.episode != null) &&
+                              index === 0
+                            }
                             onPress={() => playEpisode(item.episode_number, item.name)}
                             accessibilityLabel={`Play episode ${item.episode_number} ${item.name}`}
                           >

@@ -11,6 +11,7 @@ import { qk } from '@/api/queryKeys';
 import { OmssHttpError, type OmssHealthResponse } from '@/api/types/omss';
 import { CINEPRO_ENV_BASE_URL } from '@/utils/env';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { useTV } from '@/hooks/useTV';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import type { ThemeMode } from '@/theme/colors';
 
@@ -70,6 +71,7 @@ export function SettingsScreen() {
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const { colors, isDark } = useAppTheme();
+  const isTV = useTV();
 
   const baseKey = cineproBaseUrl.trim();
   const health = useQuery({
@@ -148,7 +150,7 @@ export function SettingsScreen() {
         Appearance
       </Text>
       <View className="flex-row gap-2 mb-6">
-        {themeOptions.map((opt) => (
+        {themeOptions.map((opt, index) => (
           <FocusSurface
             key={opt.id}
             className="flex-1 rounded-2xl py-3.5 flex-row items-center justify-center gap-2 border"
@@ -156,6 +158,8 @@ export function SettingsScreen() {
               backgroundColor: themeMode === opt.id ? colors.accent : colors.inputBg,
               borderColor: themeMode === opt.id ? colors.accent : colors.border,
             }}
+            focusVariant={themeMode === opt.id ? 'accent' : 'subtle'}
+            hasTVPreferredFocus={isTV && index === 0}
             onPress={() => setThemeMode(opt.id)}
             accessibilityLabel={`${opt.label} theme`}
             accessibilityState={{ selected: themeMode === opt.id }}
@@ -312,29 +316,35 @@ export function SettingsScreen() {
         </Text>
       </FocusSurface>
 
-      <View
+      <FocusSurface
         className="flex-row items-center justify-between py-3 border-t"
         style={{ borderColor: colors.border }}
+        focusVariant="subtle"
+        onPress={() => setAutoQuality(!autoQuality)}
+        accessibilityLabel="Toggle auto quality"
       >
         <Text className="text-base flex-1 pr-4" style={{ color: colors.text }}>
           Auto quality selection
         </Text>
-        <Switch value={autoQuality} onValueChange={setAutoQuality} accessibilityLabel="Toggle auto quality" />
-      </View>
+        <Switch value={autoQuality} pointerEvents="none" accessibilityLabel="Toggle auto quality" />
+      </FocusSurface>
 
-      <View
+      <FocusSurface
         className="flex-row items-center justify-between py-3 border-t"
         style={{ borderColor: colors.border }}
+        focusVariant="subtle"
+        onPress={() => setAutoplayNextEpisode(!autoplayNextEpisode)}
+        accessibilityLabel="Toggle autoplay next episode"
       >
         <Text className="text-base flex-1 pr-4" style={{ color: colors.text }}>
           Autoplay next episode
         </Text>
         <Switch
           value={autoplayNextEpisode}
-          onValueChange={setAutoplayNextEpisode}
+          pointerEvents="none"
           accessibilityLabel="Toggle autoplay next episode"
         />
-      </View>
+      </FocusSurface>
 
       <View className="py-4 border-t" style={{ borderColor: colors.border }}>
         <Text className="text-base mb-2" style={{ color: colors.text }}>

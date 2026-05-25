@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { OnLoadData, TextTracks } from 'react-native-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { OmssSource } from '@/api/types/omss';
 import { useAppTheme } from '@/theme/AppThemeProvider';
+import { FocusSurface } from '@/tv/FocusSurface';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
 
 export type PlayerSettingsModalProps = {
   visible: boolean;
@@ -65,6 +67,14 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
       setVideoExpanded(false);
     }
   }, [visible]);
+
+  useAndroidTVBack(() => {
+    if (visible) {
+      onClose();
+      return true;
+    }
+    return false;
+  });
 
   const captionSummary = subtitleTrack < 0 ? 'Off' : textTracks[subtitleTrack]?.title ?? 'On';
   const streamSummary =
@@ -128,7 +138,9 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View className="flex-1 justify-end">
-        <Pressable className="absolute inset-0 bg-black/75" onPress={onClose} />
+        <FocusSurface className="absolute inset-0 bg-black/75" onPress={onClose}>
+          <View className="flex-1" />
+        </FocusSurface>
         <View
           className={`mx-3 overflow-hidden border max-h-[82%] shadow-2xl ${sheetRadius}`}
           style={{
@@ -160,18 +172,20 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 </Text>
               </View>
             </View>
-            <Pressable
+            <FocusSurface
               onPress={onClose}
               className={`rounded-full border ${isAndroidPhone ? 'p-3' : 'p-2.5'}`}
               style={{
                 backgroundColor: 'rgba(255,255,255,0.14)',
                 borderColor: colors.playerHudBorder,
               }}
+              focusVariant="onMedia"
+              hasTVPreferredFocus={Platform.isTV}
               accessibilityLabel="Close settings"
               hitSlop={isAndroidPhone ? { top: 8, bottom: 8, left: 8, right: 8 } : undefined}
             >
               <Ionicons name="close" color={colors.playerHudText} size={isAndroidPhone ? 24 : 22} />
-            </Pressable>
+            </FocusSurface>
           </View>
 
           <ScrollView className={scrollPad} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -186,7 +200,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
             </View>
             <View className="flex-row flex-wrap gap-2 mb-7">
               {rates.map((r) => (
-                <Pressable
+                <FocusSurface
                   key={r}
                   onPress={() => onRateChange(r)}
                   className={`rounded-2xl min-w-[72px] items-center justify-center ${rateChipPad}`}
@@ -195,11 +209,11 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                   <Text className="font-bold text-[15px]" style={{ color: colors.playerHudText }}>
                     {r}x
                   </Text>
-                </Pressable>
+                </FocusSurface>
               ))}
             </View>
 
-            <Pressable
+            <FocusSurface
               onPress={() => setVideoExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} flex-row items-center justify-between ${videoExpanded ? 'mb-2' : 'mb-4'}`}
               style={rowStyle}
@@ -216,10 +230,10 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 </View>
               </View>
               <Ionicons name={videoExpanded ? 'chevron-up' : 'chevron-down'} color="rgba(255,255,255,0.55)" size={22} />
-            </Pressable>
+            </FocusSurface>
             {videoExpanded ? (
               <View className="mb-6">
-                <Pressable
+                <FocusSurface
                   onPress={() => onVideoIdxChange(-1)}
                   className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between ${
                     preferredVideoIdx < 0 ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
@@ -227,9 +241,9 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 >
                   <Text className="text-white font-semibold text-[15px]">Auto (adaptive)</Text>
                   {preferredVideoIdx < 0 ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                </Pressable>
+                </FocusSurface>
                 {videoTracks.map((vt, i) => (
-                  <Pressable
+                  <FocusSurface
                     key={`${vt.trackId ?? i}-${vt.height}`}
                     onPress={() => onVideoIdxChange(i)}
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
@@ -241,7 +255,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                       {vt.bitrate ? `· ${Math.round(vt.bitrate / 1000)} kbps` : ''}
                     </Text>
                     {preferredVideoIdx === i ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                  </Pressable>
+                  </FocusSurface>
                 ))}
                 {!videoTracks.length ? (
                   <Text className="text-white/40 text-sm leading-5">Quality levels appear after playback starts.</Text>
@@ -249,7 +263,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               </View>
             ) : null}
 
-            <Pressable
+            <FocusSurface
               onPress={() => setAudioExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${audioExpanded ? 'mb-2' : 'mb-4'}`}
             >
@@ -263,11 +277,11 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 </View>
               </View>
               <Ionicons name={audioExpanded ? 'chevron-up' : 'chevron-down'} color="rgba(255,255,255,0.55)" size={22} />
-            </Pressable>
+            </FocusSurface>
             {audioExpanded ? (
               <View className="mb-6">
                 {audioTracks.map((at, i) => (
-                  <Pressable
+                  <FocusSurface
                     key={`${at.index}-${i}`}
                     onPress={() => onAudioIdxChange(i)}
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
@@ -278,7 +292,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                       {[at.title, at.language].filter(Boolean).join(' · ') || `Track ${i + 1}`}
                     </Text>
                     {audioSafeIdx === i ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                  </Pressable>
+                  </FocusSurface>
                 ))}
                 {!audioTracks.length ? (
                   <Text className="text-white/40 text-sm leading-5 mb-2">Audio tracks appear after playback starts.</Text>
@@ -286,7 +300,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               </View>
             ) : null}
 
-            <Pressable
+            <FocusSurface
               onPress={() => setCaptionsExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${captionsExpanded ? 'mb-2' : 'mb-4'}`}
               accessibilityRole="button"
@@ -307,10 +321,10 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 color="rgba(255,255,255,0.55)"
                 size={22}
               />
-            </Pressable>
+            </FocusSurface>
             {captionsExpanded ? (
               <View className="mb-6">
-                <Pressable
+                <FocusSurface
                   onPress={() => onSubtitleChange(-1)}
                   className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between ${
                     subtitleTrack < 0 ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
@@ -318,9 +332,9 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 >
                   <Text className="text-white font-semibold text-[15px]">Off</Text>
                   {subtitleTrack < 0 ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                </Pressable>
+                </FocusSurface>
                 {textTracks.map((t, idx) => (
-                  <Pressable
+                  <FocusSurface
                     key={`${t.title}-${idx}`}
                     onPress={() => onSubtitleChange(idx)}
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
@@ -331,7 +345,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                       {t.title}
                     </Text>
                     {subtitleTrack === idx ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                  </Pressable>
+                  </FocusSurface>
                 ))}
                 {!textTracks.length ? (
                   <Text className="text-white/40 text-sm leading-5">No captions reported for this title.</Text>
@@ -339,7 +353,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               </View>
             ) : null}
 
-            <Pressable
+            <FocusSurface
               onPress={() => setStreamExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${streamExpanded ? 'mb-2' : 'mb-4'}`}
               accessibilityRole="button"
@@ -355,14 +369,14 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 </View>
               </View>
               <Ionicons name={streamExpanded ? 'chevron-up' : 'chevron-down'} color="rgba(255,255,255,0.55)" size={22} />
-            </Pressable>
+            </FocusSurface>
             {streamExpanded ? (
               <View className="mb-6">
                 {!sortedSources.length ? (
                   <Text className="text-white/40 text-sm leading-5 mb-2">No alternate streams.</Text>
                 ) : null}
                 {sortedSources.map((s, idx) => (
-                  <Pressable
+                  <FocusSurface
                     key={`${s.provider.id}-${idx}-${s.quality}`}
                     onPress={() => onSourceChange(idx)}
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
@@ -376,7 +390,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                       <Text className="text-white/50 text-xs mt-1">{s.provider.name}</Text>
                     </View>
                     {idx === sourceIndex ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
-                  </Pressable>
+                  </FocusSurface>
                 ))}
               </View>
             ) : null}
@@ -385,7 +399,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               <Ionicons name="timer-outline" color="rgba(255,255,255,0.45)" size={17} />
               <Text className="text-white/45 text-[11px] uppercase tracking-widest font-bold">Intro skip</Text>
             </View>
-            <Pressable
+            <FocusSurface
               onPress={onMarkIntroEnd}
               className={`${isAndroidPhone ? 'py-5' : ''} mb-10`}
               style={pillStyle}
@@ -394,7 +408,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               <Text className="text-white/48 text-[13px] mt-1.5 leading-[19px]">
                 Uses the current time as where intros finish. Future plays show “Skip intro”.
               </Text>
-            </Pressable>
+            </FocusSurface>
           </ScrollView>
         </View>
       </View>

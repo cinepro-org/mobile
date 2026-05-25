@@ -137,6 +137,7 @@ export function HomeScreen() {
         overscanX={overscanX}
         items={heroItems}
         onOpenActive={onOpenHero}
+        preferFocus
       />
 
       {!hasTmdb ? (
@@ -171,6 +172,7 @@ export function HomeScreen() {
                   <FocusSurface
                     className="rounded-full px-5 py-2.5"
                     style={ts.chip}
+                    focusVariant="subtle"
                     onPress={() =>
                       navigation.navigate('Genre', {
                         genreId: item.id,

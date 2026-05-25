@@ -15,6 +15,8 @@ import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { ThemedBackButton, ThemedScreen, ThemedText } from '@/theme/themedPrimitives';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
+import { useTV } from '@/hooks/useTV';
 
 export function GenreScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Genre'>>();
@@ -22,6 +24,7 @@ export function GenreScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { overscanX } = useResponsive();
+  const isTV = useTV();
   const { genreId, genreName, mediaType } = route.params;
 
   const hasTmdb = useHasConfiguredTmdbKey();
@@ -110,10 +113,15 @@ export function GenreScreen() {
 
   const listPad = GRID_LIST_SIDE_PADDING + overscanX;
 
+  useAndroidTVBack(() => {
+    navigation.goBack();
+    return true;
+  });
+
   return (
     <ThemedScreen style={{ paddingTop: Math.max(insets.top, 12) }}>
       <View style={{ paddingHorizontal: listPad }} className="flex-row items-center mb-3 gap-3">
-        <ThemedBackButton onPress={() => navigation.goBack()} />
+        <ThemedBackButton onPress={() => navigation.goBack()} hasTVPreferredFocus={isTV} />
         <ThemedText variant="title" className="text-2xl flex-1" numberOfLines={2}>
           {genreName}
         </ThemedText>

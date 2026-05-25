@@ -5,12 +5,23 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "android:release": "expo run:android --variant release",
+    "android:run:release": "expo run:android --variant release",
+    "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -Target both",
+    "android:release:phone": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -Target phone",
+    "android:release:tv": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -Target tv",
     "android:apk": "cd android && gradlew.bat assembleRelease",
-    "android:apk:subst": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1",
-    "android:bundle:subst": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -GradleTask bundleRelease",
+    "android:apk:subst": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -Target phone",
+    "android:bundle:subst": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -GradleTask bundleRelease -Target phone",
+    "android:bundle:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -GradleTask bundleRelease -Target both",
     "ios": "expo run:ios",
     "web": "expo start --web"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native"
+      ]
+    }
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -36,7 +47,7 @@
     "nativewind": "^4.2.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-native": "0.81.5",
+    "react-native": "npm:react-native-tvos@0.81-stable",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
@@ -48,6 +59,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@react-native-tvos/config-tv": "^0.1.4",
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },

@@ -87,11 +87,13 @@ export function ThemedBackButton({
   onPress,
   accessibilityLabel = 'Go back',
   variant = 'default',
+  hasTVPreferredFocus,
 }: {
   onPress: () => void;
   accessibilityLabel?: string;
   /** Circular control over photos/video — no full-width bar look */
   variant?: 'default' | 'onMedia';
+  hasTVPreferredFocus?: boolean;
 }) {
   const { colors } = useAppTheme();
 
@@ -99,6 +101,8 @@ export function ThemedBackButton({
     return (
       <FocusSurface
         onPress={onPress}
+        focusVariant="onMedia"
+        hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}
         style={{
           width: 42,
@@ -123,6 +127,8 @@ export function ThemedBackButton({
         borderWidth: 1,
         alignSelf: 'flex-start',
       }}
+      focusVariant="subtle"
+      hasTVPreferredFocus={hasTVPreferredFocus}
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
     >

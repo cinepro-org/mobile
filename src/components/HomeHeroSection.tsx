@@ -11,6 +11,7 @@ type Props = {
   overscanX: number;
   items: MediaCardModel[];
   onOpenActive?: (item: MediaCardModel) => void;
+  preferFocus?: boolean;
 };
 
 /** Spotlight bleeds under the status bar; logo sits in the top safe area. */
@@ -20,6 +21,7 @@ export function HomeHeroSection({
   overscanX,
   items,
   onOpenActive,
+  preferFocus,
 }: Props) {
   const insets = useSafeAreaInsets();
   const bleedH = heroHeight + insets.top;
@@ -40,6 +42,7 @@ export function HomeHeroSection({
           items={items}
           overscanX={0}
           onOpenActive={onOpenActive}
+          preferFocus={preferFocus}
         />
       </View>
 

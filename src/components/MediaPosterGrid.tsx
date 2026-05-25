@@ -14,6 +14,7 @@ type Props = {
   ListEmptyComponent?: React.ReactElement | null;
   onEndReached?: () => void;
   bottomInset?: number;
+  preferFirstFocus?: boolean;
 };
 
 /** Multi-column poster grid (Search, Browse by genre). Needs a flex:1 parent. */
@@ -25,13 +26,14 @@ export function MediaPosterGrid({
   ListEmptyComponent,
   onEndReached,
   bottomInset = 24,
+  preferFirstFocus,
 }: Props) {
   const { gridColumns: numColumns, windowWidth } = useResponsive();
   const { posterW, posterH, slotW } = gridPosterSlotDimensions(windowWidth, overscanX, numColumns);
   const rowHeight = posterH + GRID_ROW_GAP;
 
   const renderItem = useCallback(
-    ({ item }: { item: MediaCardModel }) => (
+    ({ item, index }: { item: MediaCardModel; index: number }) => (
       <View
         style={{
           width: slotW,
@@ -40,10 +42,16 @@ export function MediaPosterGrid({
           justifyContent: 'flex-start',
         }}
       >
-        <MediaCard item={item} width={posterW} height={posterH} onPress={() => onSelect(item)} />
+        <MediaCard
+          item={item}
+          width={posterW}
+          height={posterH}
+          onPress={() => onSelect(item)}
+          hasTVPreferredFocus={preferFirstFocus && index === 0}
+        />
       </View>
     ),
-    [onSelect, posterH, posterW, rowHeight, slotW]
+    [onSelect, posterH, posterW, preferFirstFocus, rowHeight, slotW]
   );
 
   return (
@@ -64,6 +72,7 @@ export function MediaPosterGrid({
         }}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.65}
+        removeClippedSubviews={false}
       />
     </View>
   );
