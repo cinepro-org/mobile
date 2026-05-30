@@ -15,10 +15,9 @@ import Video, {
   BufferingStrategyType,
   SelectedTrackType,
   SelectedVideoTrackType,
-  TextTrackType,
   ViewType,
 } from 'react-native-video';
-import type { VideoRef, TextTracks, OnLoadData, OnVideoErrorData } from 'react-native-video';
+import type { VideoRef, OnLoadData, OnVideoErrorData } from 'react-native-video';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Brightness from 'expo-brightness';
 import { BlurView } from 'expo-blur';
@@ -46,7 +45,6 @@ import { PlayerEpisodeSidebar } from '@/player/PlayerEpisodeSidebar';
 import {
   buildPlaybackRequest,
   pickAutoSource,
-  resolveProxyUrl,
   videoSourceContentTypeForPlayback,
 } from '@/utils/stream';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -55,6 +53,13 @@ import {
   mediaStorageKey,
   type ContinuePlayback,
 } from '@/store/libraryStore';
+import {
+  buildOmssTextTracks,
+  pickDefaultEnglishSubtitleIndex,
+  resolveSubtitleTrackIndex,
+} from '@/player/omssTextTracks';
+import { SidecarSubtitleOverlay } from '@/player/SidecarSubtitleOverlay';
+import { useSidecarSubtitles } from '@/player/useSidecarSubtitles';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { useTVEventHandler } from '@/tv/useTVEventHandler';
 import { useAndroidTVBack } from '@/hooks/useAndroidTVBack';
@@ -146,6 +151,8 @@ export function PlayerScreen() {
   const { colors } = useAppTheme();
   const navigation = useAppNavigation();
   const isTV = useTV();
+  /** react-native-video 6.16+ cannot render Android sidecar subtitles; fetch and overlay in JS. */
+  const useNativeSidecarSubtitles = Platform.OS !== 'android';
   const route = useRoute<RouteProp<RootStackParamList, 'Player'>>();
   const params = route.params;
   const insets = useSafeAreaInsets();
@@ -160,6 +167,8 @@ export function PlayerScreen() {
   const saveSelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** User chose a stream in settings; when auto-quality is on we otherwise always start at best MP4. */
   const manualSourcePickRef = useRef(false);
+  /** `undefined` until prefs load; then saved index or `null` if first play for this title. */
+  const savedSubtitlePrefRef = useRef<number | null | undefined>(undefined);
 
   const autoQuality = useSettingsStore((s) => s.autoQuality);
   const defaultRate = useSettingsStore((s) => s.defaultPlaybackRate);
@@ -188,6 +197,7 @@ export function PlayerScreen() {
   const streamsLoading = streamState.status === 'loading';
 
   const [subtitleTrack, setSubtitleTrack] = useState(-1);
+  const [subtitlePrefsReady, setSubtitlePrefsReady] = useState(false);
   const [rate, setRate] = useState(defaultRate);
   const [paused, setPaused] = useState(false);
   const [position, setPosition] = useState(0);
@@ -289,6 +299,9 @@ export function PlayerScreen() {
 
   useEffect(() => {
     manualSourcePickRef.current = false;
+    savedSubtitlePrefRef.current = undefined;
+    setSubtitlePrefsReady(false);
+    setSubtitleTrack(-1);
   }, [mediaKey]);
 
   useEffect(() => {
@@ -296,7 +309,8 @@ export function PlayerScreen() {
     if (!sorted.length) return;
     void loadPlayerSelection(mediaKey).then((p) => {
       if (t !== prefsToken.current) return;
-      if (p?.subtitleIdx != null && p.subtitleIdx >= -1) setSubtitleTrack(p.subtitleIdx);
+      savedSubtitlePrefRef.current = p?.subtitleIdx ?? null;
+      setSubtitlePrefsReady(true);
       if (p?.audioIdx != null && p.audioIdx >= 0) setPreferredAudioIdx(p.audioIdx);
       if (p?.videoTrackIdx != null && p.videoTrackIdx >= -1) setPreferredVideoIdx(p.videoTrackIdx);
 
@@ -326,15 +340,45 @@ export function PlayerScreen() {
     [params.backdropPath, params.posterPath]
   );
 
-  const textTracks = useMemo(() => {
-    const subs = omss.data?.subtitles ?? [];
-    return subs.map((s) => ({
-      title: `${s.label} (${s.format})`,
-      language: 'en' as const,
-      type: TextTrackType.VTT,
-      uri: resolveProxyUrl(s.url),
-    })) as TextTracks;
-  }, [omss.data?.subtitles]);
+  const { tracks: textTracks, meta: subtitleMeta } = useMemo(
+    () => buildOmssTextTracks(omss.data?.subtitles ?? []),
+    [omss.data?.subtitles]
+  );
+
+  useEffect(() => {
+    if (!subtitleMeta.length) {
+      setSubtitleTrack(-1);
+      return;
+    }
+    if (!subtitlePrefsReady) {
+      setSubtitleTrack(pickDefaultEnglishSubtitleIndex(subtitleMeta));
+      return;
+    }
+    const saved = savedSubtitlePrefRef.current ?? null;
+    setSubtitleTrack(resolveSubtitleTrackIndex(saved, subtitleMeta));
+  }, [subtitleMeta, subtitlePrefsReady]);
+
+  /** Wait for saved subtitle pref before mounting sidecar tracks (avoids wrong default flash). */
+  const sidecarSubtitlesReady = !textTracks.length || subtitlePrefsReady;
+
+  const activeSidecarTrack = useMemo(() => {
+    if (subtitleTrack < 0 || subtitleTrack >= textTracks.length) return null;
+    return textTracks[subtitleTrack] ?? null;
+  }, [subtitleTrack, textTracks]);
+
+  const sidecarCueText = useSidecarSubtitles({
+    track: activeSidecarTrack,
+    positionSec: position,
+    enabled: !useNativeSidecarSubtitles && sidecarSubtitlesReady && subtitleTrack >= 0,
+  });
+
+  useEffect(() => {
+    if (!textTracks.length) return;
+    playbackLogger.info('Side-loaded subtitle tracks', {
+      count: textTracks.length,
+      labels: subtitleMeta.map((m) => `${m.label} (${m.format})`),
+    });
+  }, [subtitleMeta, textTracks.length]);
 
   const playbackRequest = useMemo(() => {
     if (!activeSource) return null;
@@ -397,6 +441,9 @@ export function PlayerScreen() {
       uri: playbackRequest.uri,
       ...(contentType ? { type: contentType } : {}),
       ...(playbackRequest.headers ? { headers: playbackRequest.headers } : {}),
+      ...(sidecarSubtitlesReady && textTracks.length && useNativeSidecarSubtitles
+        ? { textTracks }
+        : {}),
       minLoadRetryCount: 2,
       bufferConfig: {
         minBufferMs: 20_000,
@@ -405,7 +452,7 @@ export function PlayerScreen() {
         bufferForPlaybackAfterRebufferMs: 4800,
       },
     };
-  }, [activeSource, playbackRequest]);
+  }, [activeSource, playbackRequest, sidecarSubtitlesReady, textTracks, useNativeSidecarSubtitles]);
 
   useEffect(() => {
     if (activeSource && playbackRequest) {
@@ -907,7 +954,7 @@ export function PlayerScreen() {
     <View className="flex-1 bg-black">
       <StatusBar hidden />
 
-      {uri ? (
+      {uri && sidecarSubtitlesReady ? (
         <View className="flex-1" collapsable={false}>
           <View
             className="flex-1"
@@ -990,11 +1037,20 @@ export function PlayerScreen() {
                   }
                 : undefined
             }
-            textTracks={textTracks}
+            textTracks={useNativeSidecarSubtitles && sidecarSubtitlesReady ? textTracks : []}
             selectedTextTrack={
-              subtitleTrack >= 0
+              useNativeSidecarSubtitles && subtitleTrack >= 0
                 ? { type: SelectedTrackType.INDEX, value: subtitleTrack }
                 : { type: SelectedTrackType.DISABLED }
+            }
+            subtitleStyle={
+              useNativeSidecarSubtitles
+                ? {
+                    fontSize: isTV ? 22 : 16,
+                    paddingBottom: isTV ? 12 : 8,
+                    opacity: 1,
+                  }
+                : undefined
             }
             selectedAudioTrack={selectedAudioTrack}
             selectedVideoTrack={selectedVideoTrack}
@@ -1197,6 +1253,20 @@ export function PlayerScreen() {
           )}
         </View>
       )}
+
+      {uri && sidecarSubtitlesReady && !useNativeSidecarSubtitles ? (
+        <SidecarSubtitleOverlay
+          text={sidecarCueText}
+          bottomInset={
+            isTV
+              ? 56
+              : hud && !controlsLocked
+                ? Math.max(insets.bottom, 112)
+                : Math.max(insets.bottom, 40)
+          }
+          fontSize={isTV ? 22 : 16}
+        />
+      ) : null}
 
       {gestureHud ? (
         <View
@@ -1564,7 +1634,7 @@ export function PlayerScreen() {
           setRate(r);
           setDefaultPlaybackRate(r);
         }}
-        textTracks={textTracks}
+        subtitleMeta={subtitleMeta}
         subtitleTrack={subtitleTrack}
         onSubtitleChange={setSubtitleTrack}
         sortedSources={sorted}
