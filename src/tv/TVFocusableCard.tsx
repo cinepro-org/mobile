@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { TV_CONTROL_FOCUS_SCALE } from '@/tv/focusStyles';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { tmdbImg } from '@/services/tmdbImages';
 import type { MediaCardModel } from '@/components/MediaCard';
@@ -38,6 +39,7 @@ export const TVFocusableCard = memo(
         hasTVPreferredFocus={hasTVPreferredFocus}
         collapseTVNavOnFocus
         focusVariant="card"
+        focusedScale={TV_CONTROL_FOCUS_SCALE}
         accessibilityLabel={`${item.title}${item.subtitle ? `, ${item.subtitle}` : ''}`}
         style={{
           padding: RING_PAD,

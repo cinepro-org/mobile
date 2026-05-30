@@ -1,10 +1,10 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,9 +14,10 @@ import type { MediaCardModel } from '@/components/MediaCard';
 import { TVFocusableButton } from '@/tv/TVFocusableButton';
 import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
 import { useInitialTVFocus } from '@/tv/useInitialTVFocus';
+import { useTVFocusHandle } from '@/tv/useTVFocusHandle';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { fontScale } from '@/utils/layout';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { MOTION_DURATION, MOTION_EASE_IN_OUT, motionTiming } from '@/utils/motion';
 
 type Props = {
   heroHeight: number;
@@ -26,9 +27,14 @@ type Props = {
   onPlayActive?: (item: MediaCardModel) => void;
   /** Native handle for D-pad down from hero buttons into rows/genres below. */
   downFocusHandle?: number;
+  /** Called when the Play button native focus handle is ready (for category row up-nav). */
+  onPlayFocusHandle?: (handle: number) => void;
 };
 
-/** Full-bleed Android TV home hero with large typography and Play / Details CTAs. */
+/**
+ * Full-bleed Android TV home hero. Only Play / Details are focusable — the backdrop
+ * and metadata are decorative and must not receive TV focus.
+ */
 export const TVHomeHero = memo(function TVHomeHero({
   heroHeight,
   horizontalPadding,
@@ -36,22 +42,36 @@ export const TVHomeHero = memo(function TVHomeHero({
   onOpenActive,
   onPlayActive,
   downFocusHandle,
+  onPlayFocusHandle,
 }: Props) {
   const { colors } = useAppTheme();
   const { contentFocusRef, nextFocusLeft } = useTVContentFocusLink();
   const { hasTVPreferredFocus, onInitialFocus } = useInitialTVFocus(true);
+  const playBtn = useTVFocusHandle();
+  const detailsBtn = useTVFocusHandle();
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
-  const [heroFocused, setHeroFocused] = useState(false);
+  const [buttonsFocused, setButtonsFocused] = useState(false);
+  const buttonFocusCount = useRef(0);
   const opacity = useSharedValue(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const slides = useMemo(() => items.slice(0, 6), [items]);
   const active = slides.length ? slides[index % slides.length] : undefined;
   const bleedH = heroHeight + insets.top;
+  const slideCount = slides.length;
+
+  const advanceSlide = useCallback(() => {
+    setIndex((i) => (i + 1) % slideCount);
+    opacity.value = withTiming(1, motionTiming(MOTION_DURATION.slow, MOTION_EASE_IN_OUT));
+  }, [opacity, slideCount]);
 
   useEffect(() => {
-    if (!slides.length || heroFocused) {
+    if (playBtn.handle != null) onPlayFocusHandle?.(playBtn.handle);
+  }, [onPlayFocusHandle, playBtn.handle]);
+
+  useEffect(() => {
+    if (!slides.length || buttonsFocused) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -59,9 +79,9 @@ export const TVHomeHero = memo(function TVHomeHero({
       return;
     }
     intervalRef.current = setInterval(() => {
-      opacity.value = 0;
-      setIndex((i) => (i + 1) % slides.length);
-      opacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
+      opacity.value = withTiming(0, motionTiming(MOTION_DURATION.normal, MOTION_EASE_IN_OUT), (finished) => {
+        if (finished) runOnJS(advanceSlide)();
+      });
     }, 9000);
     return () => {
       if (intervalRef.current) {
@@ -69,7 +89,7 @@ export const TVHomeHero = memo(function TVHomeHero({
         intervalRef.current = null;
       }
     };
-  }, [heroFocused, opacity, slides]);
+  }, [advanceSlide, buttonsFocused, opacity, slides.length]);
 
   useEffect(() => {
     if (!slides.length) setIndex(0);
@@ -78,9 +98,22 @@ export const TVHomeHero = memo(function TVHomeHero({
 
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
+  const onButtonFocus = () => {
+    buttonFocusCount.current += 1;
+    setButtonsFocused(true);
+    onInitialFocus();
+  };
+
+  const onButtonBlur = () => {
+    buttonFocusCount.current = Math.max(0, buttonFocusCount.current - 1);
+    requestAnimationFrame(() => {
+      if (buttonFocusCount.current === 0) setButtonsFocused(false);
+    });
+  };
+
   if (!active) {
     return (
-      <View style={{ height: heroHeight }}>
+      <View style={{ height: heroHeight }} focusable={false}>
         <LinearGradient colors={colors.gradientHero} style={{ flex: 1, paddingTop: insets.top + 40, paddingHorizontal: horizontalPadding }}>
           <Text className="tracking-[4px] font-bold" style={{ color: colors.textFaint, fontSize: fontScale(12) }}>
             FEATURED
@@ -97,8 +130,12 @@ export const TVHomeHero = memo(function TVHomeHero({
   const kind = active.mediaType === 'tv' ? 'Series' : 'Movie';
 
   return (
-    <View style={{ height: heroHeight, overflow: 'visible' }}>
+    <View style={{ height: heroHeight, overflow: 'visible' }} focusable={false} importantForAccessibility="no-hide-descendants">
+      {/* Backdrop — not focusable */}
       <Animated.View
+        focusable={false}
+        importantForAccessibility="no"
+        pointerEvents="none"
         style={[
           {
             position: 'absolute',
@@ -132,7 +169,10 @@ export const TVHomeHero = memo(function TVHomeHero({
         />
       </Animated.View>
 
+      {/* Metadata — not focusable; only the action buttons below accept focus. */}
       <View
+        focusable={false}
+        importantForAccessibility="no"
         style={{
           flex: 1,
           justifyContent: 'flex-end',
@@ -141,7 +181,7 @@ export const TVHomeHero = memo(function TVHomeHero({
         }}
         pointerEvents="box-none"
       >
-        <View className="flex-row items-center gap-2 mb-3">
+        <View className="flex-row items-center gap-2 mb-3" focusable={false} pointerEvents="none">
           <View className="rounded-md px-2.5 py-1" style={{ backgroundColor: colors.accent }}>
             <Text className="font-bold tracking-wide" style={{ color: colors.textOnAccent, fontSize: fontScale(11) }}>
               {kind}
@@ -166,25 +206,26 @@ export const TVHomeHero = memo(function TVHomeHero({
           </Text>
         ) : null}
 
-        <View className="flex-row items-center mt-6 gap-4">
+        <View className="flex-row items-center mt-6 gap-4" focusable={false}>
           {onPlayActive ? (
             <TVFocusableButton
-              ref={contentFocusRef}
+              ref={(node) => {
+                playBtn.ref(node);
+                contentFocusRef(node);
+              }}
               nextFocusLeft={nextFocusLeft}
+              nextFocusRight={onOpenActive ? detailsBtn.handle : undefined}
               nextFocusDown={downFocusHandle}
               label="Play"
               icon="play"
               size="hero"
-              focusVariant="accent"
+              focusVariant="heroPlay"
               hasTVPreferredFocus={hasTVPreferredFocus}
               collapseTVNavOnFocus
-              onFocus={() => {
-                onInitialFocus();
-                setHeroFocused(true);
-              }}
-              onBlur={() => setHeroFocused(false)}
+              onFocus={onButtonFocus}
+              onBlur={onButtonBlur}
               onPress={() => onPlayActive(active)}
-              style={{ backgroundColor: colors.accent }}
+              style={{ backgroundColor: colors.accent, borderRadius: 16 }}
               iconColor={colors.textOnAccent}
               textColor={colors.textOnAccent}
               accessibilityLabel={`Play ${active.title}`}
@@ -192,26 +233,24 @@ export const TVHomeHero = memo(function TVHomeHero({
           ) : null}
           {onOpenActive ? (
             <TVFocusableButton
-              nextFocusLeft={nextFocusLeft}
+              ref={detailsBtn.ref}
+              nextFocusLeft={playBtn.handle ?? nextFocusLeft}
               nextFocusDown={downFocusHandle}
               label="Details"
               icon="information-circle-outline"
               size="hero"
-              focusVariant="onMedia"
+              focusVariant="heroDetails"
               collapseTVNavOnFocus
-              onFocus={() => {
-                onInitialFocus();
-                setHeroFocused(true);
-              }}
-              onBlur={() => setHeroFocused(false)}
+              onFocus={onButtonFocus}
+              onBlur={onButtonBlur}
               onPress={() => onOpenActive(active)}
-              style={{ backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 16 }}
               iconColor="#fff"
               textColor="#fff"
               accessibilityLabel={`Details for ${active.title}`}
             />
           ) : null}
-          <View className="flex-row items-center gap-2 ml-2">
+          <View className="flex-row items-center gap-2 ml-2" pointerEvents="none" focusable={false}>
             {slides.map((_, i) => {
               const activeDot = i === index % slides.length;
               return (

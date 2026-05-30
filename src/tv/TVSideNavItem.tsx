@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Text, View, type View as RNView } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { useAppTheme } from '@/theme/AppThemeProvider';
@@ -36,8 +36,8 @@ export function TVSideNavItem({
   const labelStyle = useAnimatedStyle(() => {
     const p = navProgress?.value ?? 0;
     return {
-      opacity: p,
-      transform: [{ translateX: (1 - p) * -6 }],
+      opacity: interpolate(p, [0, 0.4, 1], [0, 0, 1], Extrapolation.CLAMP),
+      transform: [{ translateX: interpolate(p, [0, 1], [-10, 0], Extrapolation.CLAMP) }],
     };
   });
 

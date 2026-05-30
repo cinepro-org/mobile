@@ -1,9 +1,10 @@
-import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useMemo, useRef, useState, type RefCallback } from 'react';
 import { LayoutChangeEvent, PanResponder, Platform, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { BRAND_ACCENT } from '@/theme/colors';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { MOTION_EASE_IN_OUT, MOTION_FADE, MOTION_DURATION, motionTiming } from '@/utils/motion';
 
 type Props = {
   progress: number;
@@ -20,6 +21,10 @@ type Props = {
   formatDuration: (sec: number) => string;
   onScrubStart?: () => void;
   onScrubEnd?: () => void;
+  nextFocusUp?: number;
+  nextFocusDown?: number;
+  /** TV: register native handle for the focusable scrub surface. */
+  focusRef?: RefCallback<View>;
 };
 
 /** Seek bar with buffered lane, scrub thumb, and optional preview while dragging. */
@@ -36,6 +41,9 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
   formatDuration,
   onScrubStart,
   onScrubEnd,
+  nextFocusUp,
+  nextFocusDown,
+  focusRef,
 }: Props) {
   const barWidth = useRef(1);
   const dragging = useSharedValue(0);
@@ -57,7 +65,7 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
         onMoveShouldSetPanResponder: (_, g) =>
           !disabled && !isTv && (Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3),
         onPanResponderGrant: (e) => {
-          dragging.value = 1;
+          dragging.value = withTiming(1, motionTiming(MOTION_DURATION.fast, MOTION_EASE_IN_OUT));
           onScrubStart?.();
           const r = Math.max(0, Math.min(1, e.nativeEvent.locationX / barWidth.current));
           setScrubRatio(r);
@@ -69,12 +77,12 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
           seekFromX(e.nativeEvent.locationX);
         },
         onPanResponderRelease: () => {
-          dragging.value = 0;
+          dragging.value = withTiming(0, motionTiming(MOTION_DURATION.fast, MOTION_EASE_IN_OUT));
           setScrubRatio(null);
           onScrubEnd?.();
         },
         onPanResponderTerminate: () => {
-          dragging.value = 0;
+          dragging.value = withTiming(0, motionTiming(MOTION_DURATION.fast, MOTION_EASE_IN_OUT));
           setScrubRatio(null);
           onScrubEnd?.();
         },
@@ -94,7 +102,7 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
     transform: [
       { translateX: -thumbSize / 2 },
       { translateY: -thumbSize / 2 },
-      { scale: withSpring(dragging.value ? 1.2 : 1, { damping: 14 }) },
+      { scale: interpolate(dragging.value, [0, 1], [1, 1.15], Extrapolation.CLAMP) },
     ],
   }));
 
@@ -158,7 +166,11 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
   return (
     <View className={cinematic ? '' : 'gap-2'}>
       {scrubRatio != null && !disabled && !cinematic ? (
-        <Animated.View entering={FadeIn.duration(140)} exiting={FadeOut.duration(160)} className="items-center">
+        <Animated.View
+          entering={FadeIn.duration(MOTION_FADE.in)}
+          exiting={FadeOut.duration(MOTION_FADE.out)}
+          className="items-center"
+        >
           <View className="rounded-2xl overflow-hidden border border-white/20 bg-black/50 h-[72px] w-[124px]">
             {previewBackdropUri ? (
               <Image source={{ uri: previewBackdropUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -176,11 +188,15 @@ export const PlayerProgressBar = memo(function PlayerProgressBar({
 
       {isTv ? (
         <FocusSurface
-          focusVariant="onMedia"
+          ref={focusRef}
+          focusVariant="playerOverlay"
+          focusedScale={1}
           accessibilityLabel="Seek along timeline"
-          style={{ height: touchH, justifyContent: 'center' }}
+          style={{ height: touchH, justifyContent: 'center', borderRadius: 8, paddingHorizontal: 2 }}
           onLayout={onBarLayout}
           onPress={(e) => seekFromX(e.nativeEvent.locationX)}
+          nextFocusUp={nextFocusUp}
+          nextFocusDown={nextFocusDown}
         >
           <View pointerEvents="none">{trackContent}</View>
         </FocusSurface>

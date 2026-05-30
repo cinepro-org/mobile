@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, LayoutAnimation, Platform, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import type { MediaCardModel } from '@/components/MediaCard';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useLibraryStore } from '@/store/libraryStore';
+import { configureSmoothLayoutAnimation } from '@/utils/motion';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   resolveStreamReadyState,
@@ -28,6 +29,8 @@ import { tmdbImg } from '@/services/tmdbImages';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { DetailBackdropHero } from '@/components/DetailBackdropHero';
 import { TVDetailLayout } from '@/tv/TVDetailLayout';
+import { TVGenreChipRow } from '@/tv/TVGenreChipRow';
+import { TV_CONTROL_FOCUS_SCALE } from '@/tv/focusStyles';
 import { TVMediaRow } from '@/tv/TVMediaRow';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -176,14 +179,14 @@ export function TvDetailScreen() {
   }, [id, navigation, selectedSeasonNumber, selectedSeasonSummary, showTitle]);
 
   const selectSeason = useCallback((seasonNumber: number) => {
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    configureSmoothLayoutAnimation();
     setSelectedSeasonNumber(seasonNumber);
   }, []);
 
   const loading = detail.isPending;
 
   const toggleOverview = () => {
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    configureSmoothLayoutAnimation();
     setOverviewExpanded((v) => !v);
   };
 
@@ -297,7 +300,7 @@ export function TvDetailScreen() {
               Seasons
             </Text>
             {playableSeasons.length > 0 ? (
-              <FocusSurface className="py-1 px-1" collapseTVNavOnFocus onPress={openSeasonBrowser}>
+              <FocusSurface className="py-1 px-1" collapseTVNavOnFocus focusedScale={1} focusVariant="nav" onPress={openSeasonBrowser}>
                 <Text className="text-xs font-bold" style={{ color: colors.accent }}>
                   Full list
                 </Text>
@@ -306,29 +309,14 @@ export function TvDetailScreen() {
           </View>
 
           {playableSeasons.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              {playableSeasons.map((season) => {
-                const active = season.season_number === selectedSeasonNumber;
-                return (
-                  <FocusSurface
-                    key={season.id}
-                    className="rounded-full px-5 py-3"
-                    style={active ? ts.chipActive : ts.chip}
-                    collapseTVNavOnFocus
-                    onPress={() => selectSeason(season.season_number)}
-                    accessibilityLabel={season.name}
-                    accessibilityState={{ selected: active }}
-                  >
-                    <Text
-                      className="font-bold text-sm"
-                      style={{ color: active ? colors.textOnAccent : colors.text }}
-                    >
-                      {seasonChipLabel(season)}
-                    </Text>
-                  </FocusSurface>
-                );
-              })}
-            </ScrollView>
+            <TVGenreChipRow
+              chips={playableSeasons.map((season) => ({
+                id: season.season_number,
+                name: seasonChipLabel(season),
+              }))}
+              selectedId={selectedSeasonNumber}
+              onSelect={(chip) => selectSeason(chip.id)}
+            />
           ) : null}
 
           {seasonDetail.isLoading ? (
@@ -351,8 +339,8 @@ export function TvDetailScreen() {
                       backgroundColor: isContinue ? colors.accentSoft : colors.inputBg,
                     }}
                     focusVariant={isContinue ? 'accent' : 'card'}
+                    focusedScale={TV_CONTROL_FOCUS_SCALE}
                     collapseTVNavOnFocus
-                    hasTVPreferredFocus={!hasResume && index === 0}
                     onPress={() => playEpisode(item.episode_number, item.name)}
                     accessibilityLabel={`Play episode ${item.episode_number} ${item.name}`}
                   >

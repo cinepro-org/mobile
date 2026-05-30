@@ -7,6 +7,10 @@ export function useTVFocusHandle() {
 
   const ref = useCallback((node: View | null) => {
     if (!node) return;
+    const syncHandle = findNodeHandle(node);
+    if (typeof syncHandle === 'number') {
+      setHandle(syncHandle);
+    }
     requestAnimationFrame(() => {
       const nativeHandle = findNodeHandle(node);
       if (typeof nativeHandle === 'number') {

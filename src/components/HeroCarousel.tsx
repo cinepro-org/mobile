@@ -1,10 +1,10 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import type { MediaCardModel } from '@/components/MediaCard';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { MOTION_DURATION, MOTION_EASE_IN_OUT, motionTiming } from '@/utils/motion';
 
 type Props = {
   heroHeight: number;
@@ -37,6 +38,12 @@ export const HeroCarousel = memo(function HeroCarousel({
 
   const slides = useMemo(() => items.slice(0, 6), [items]);
   const active = slides.length ? slides[index % slides.length] : undefined;
+  const slideCount = slides.length;
+
+  const advanceSlide = useCallback(() => {
+    setIndex((i) => (i + 1) % slideCount);
+    opacity.value = withTiming(1, motionTiming(MOTION_DURATION.slow, MOTION_EASE_IN_OUT));
+  }, [opacity, slideCount]);
 
   useEffect(() => {
     if (!slides.length || heroFocused) {
@@ -47,9 +54,9 @@ export const HeroCarousel = memo(function HeroCarousel({
       return;
     }
     intervalRef.current = setInterval(() => {
-      opacity.value = 0;
-      setIndex((i) => (i + 1) % slides.length);
-      opacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
+      opacity.value = withTiming(0, motionTiming(MOTION_DURATION.normal, MOTION_EASE_IN_OUT), (finished) => {
+        if (finished) runOnJS(advanceSlide)();
+      });
     }, 8500);
     return () => {
       if (intervalRef.current) {
@@ -57,7 +64,7 @@ export const HeroCarousel = memo(function HeroCarousel({
         intervalRef.current = null;
       }
     };
-  }, [heroFocused, opacity, slides]);
+  }, [advanceSlide, heroFocused, opacity, slides.length]);
 
   useEffect(() => {
     if (!slides.length) {

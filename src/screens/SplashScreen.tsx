@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppLogo } from '@/components/AppLogo';
 import { useAppTheme } from '@/theme/AppThemeProvider';
+import { MOTION_DURATION, MOTION_EASE_OUT, MOTION_SPRING, motionTiming } from '@/utils/motion';
 
 export function SplashScreen() {
   const { colors, isDark } = useAppTheme();
@@ -18,9 +19,9 @@ export function SplashScreen() {
   const tagOpacity = useSharedValue(0);
 
   useLayoutEffect(() => {
-    logoOpacity.value = withTiming(1, { duration: 520 });
-    logoScale.value = withSpring(1, { damping: 14, stiffness: 120 });
-    tagOpacity.value = withDelay(280, withTiming(1, { duration: 480 }));
+    logoOpacity.value = withTiming(1, motionTiming(MOTION_DURATION.slow, MOTION_EASE_OUT));
+    logoScale.value = withSpring(1, MOTION_SPRING.responsive);
+    tagOpacity.value = withDelay(320, withTiming(1, motionTiming(MOTION_DURATION.slow, MOTION_EASE_OUT)));
   }, [logoOpacity, logoScale, tagOpacity]);
 
   const logoAnim = useAnimatedStyle(() => ({

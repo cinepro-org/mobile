@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { View } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLogo } from '@/components/AppLogo';
+import { AppIcon } from '@/components/AppIcon';
 import { TVSideNavItem } from '@/tv/TVSideNavItem';
 import { useTVNavigation } from '@/tv/TVNavigationContext';
 import { useAppTheme } from '@/theme/AppThemeProvider';
@@ -24,8 +25,18 @@ const ITEMS: {
 export function TVSideNavRail({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const { expanded, railAnimatedStyle } = useTVNavigation();
+  const { railAnimatedStyle, navProgress } = useTVNavigation();
   const activeRoute = state.routes[state.index]?.name as keyof MainTabParamList;
+
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(navProgress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(navProgress.value, [0, 0.45], [1, 0.92], Extrapolation.CLAMP) }],
+  }));
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(navProgress.value, [0.25, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [{ translateX: interpolate(navProgress.value, [0.25, 1], [-8, 0], Extrapolation.CLAMP) }],
+  }));
 
   return (
     <Animated.View
@@ -52,24 +63,13 @@ export function TVSideNavRail({ state, navigation }: BottomTabBarProps) {
         },
       ]}
     >
-      <View className="mb-6 items-center" style={{ minHeight: 48, justifyContent: 'center' }}>
-        {expanded ? (
-          <>
-            <AppLogo width={148} height={40} />
-            <Text className="text-xs mt-3 tracking-[0.2em] font-semibold" style={{ color: colors.textFaint }}>
-              ANDROID TV
-            </Text>
-          </>
-        ) : (
-          <View
-            className="rounded-xl items-center justify-center"
-            style={{ width: 42, height: 42, backgroundColor: colors.accent }}
-          >
-            <Text className="text-lg font-black" style={{ color: colors.textOnAccent }}>
-              C
-            </Text>
-          </View>
-        )}
+      <View className="mb-6 items-center justify-center" style={{ minHeight: 48 }}>
+        <Animated.View style={[{ position: 'absolute' }, iconStyle]}>
+          <AppIcon size={42} />
+        </Animated.View>
+        <Animated.View style={logoStyle}>
+          <AppLogo width={148} height={40} />
+        </Animated.View>
       </View>
 
       {ITEMS.map((item, index) => (

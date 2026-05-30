@@ -122,7 +122,8 @@ export function RootNavigator() {
       <RootStack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: Platform.isTV ? 'none' : 'default',
+          animation: Platform.isTV ? 'fade' : 'default',
+          animationDuration: Platform.isTV ? 280 : undefined,
         }}
       >
         <RootStack.Screen name="Main" component={Shell} />
@@ -131,7 +132,8 @@ export function RootNavigator() {
           component={MovieDetailScreen}
           options={{
             presentation: Platform.isTV ? 'card' : 'modal',
-            animation: Platform.isTV ? 'none' : 'slide_from_right',
+            animation: Platform.isTV ? 'fade' : 'slide_from_right',
+            animationDuration: Platform.isTV ? 280 : undefined,
           }}
         />
         <RootStack.Screen
@@ -139,7 +141,8 @@ export function RootNavigator() {
           component={TvDetailScreen}
           options={{
             presentation: Platform.isTV ? 'card' : 'modal',
-            animation: Platform.isTV ? 'none' : 'slide_from_right',
+            animation: Platform.isTV ? 'fade' : 'slide_from_right',
+            animationDuration: Platform.isTV ? 280 : undefined,
           }}
         />
         <RootStack.Screen
@@ -147,9 +150,11 @@ export function RootNavigator() {
           component={EpisodeBrowserScreen}
           options={{
             presentation: Platform.isTV ? 'card' : 'modal',
+            animation: Platform.isTV ? 'fade' : 'default',
+            animationDuration: Platform.isTV ? 280 : undefined,
           }}
         />
-        <RootStack.Screen name="Genre" component={GenreScreen} />
+        <RootStack.Screen name="Genre" component={GenreScreen} options={{ animation: Platform.isTV ? 'fade' : 'default' }} />
         <RootStack.Screen
           name="Player"
           component={PlayerScreen}

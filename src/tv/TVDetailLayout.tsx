@@ -5,6 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TVFocusableButton } from '@/tv/TVFocusableButton';
 import { FocusSurface } from '@/tv/FocusSurface';
+import { TV_CONTROL_FOCUS_SCALE } from '@/tv/focusStyles';
+import { useInitialTVFocus } from '@/tv/useInitialTVFocus';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { fontScale } from '@/utils/layout';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -58,6 +60,10 @@ export function TVDetailLayout({
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const heroH = 520 + insets.top;
+  const {
+    hasTVPreferredFocus: preferPrimaryFocus,
+    onInitialFocus: onPrimaryInitialFocus,
+  } = useInitialTVFocus(primaryAction.hasTVPreferredFocus !== false);
 
   return (
     <ScrollView
@@ -91,6 +97,7 @@ export function TVDetailLayout({
             className="rounded-full items-center justify-center self-start mb-6"
             style={{ width: 48, height: 48, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}
             focusVariant="onMedia"
+            focusedScale={TV_CONTROL_FOCUS_SCALE}
             onPress={onBack}
             accessibilityLabel="Go back"
           >
@@ -148,7 +155,8 @@ export function TVDetailLayout({
                   icon={primaryAction.icon}
                   size="hero"
                   focusVariant="accent"
-                  hasTVPreferredFocus={primaryAction.hasTVPreferredFocus ?? true}
+                  hasTVPreferredFocus={preferPrimaryFocus}
+                  onFocus={onPrimaryInitialFocus}
                   collapseTVNavOnFocus
                   onPress={primaryAction.onPress}
                   style={{

@@ -37,6 +37,7 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import type { RootStackParamList, PlayerEpisodeRef, PlayerRouteParams } from '@/navigation/types';
+import { MOTION_DURATION, MOTION_EASE_IN_OUT, motionTiming } from '@/utils/motion';
 import { qk } from '@/api/queryKeys';
 import { TmdbApi } from '@/api/tmdbClient';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
@@ -98,7 +99,11 @@ function PlayerFetchSkeleton({
   const { colors } = useAppTheme();
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
+    p.value = withRepeat(
+      withTiming(1, motionTiming(MOTION_DURATION.pulse, MOTION_EASE_IN_OUT)),
+      -1,
+      true
+    );
   }, [p]);
   const a = useAnimatedStyle(() => ({
     opacity: interpolate(p.value, [0, 1], [0.35, 0.65]),
@@ -188,7 +193,7 @@ export function PlayerScreen() {
   const [position, setPosition] = useState(0);
   const [playableDuration, setPlayableDuration] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [hud, setHud] = useState(Platform.isTV);
+  const [hud, setHud] = useState(false);
   const [seekHint, setSeekHint] = useState<'back' | 'forward' | null>(null);
   const seekHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -501,15 +506,16 @@ export function PlayerScreen() {
 
   const scheduleHudHide = useCallback(() => {
     clearHudTimer();
+    if (!isTV || !uri) return;
     if (settingsOpen || episodeListOpen || paused || controlsLocked) return;
     const hideMs = Platform.isTV ? TV_HUD_HIDE_MS : 5200;
     hudHideTimer.current = setTimeout(() => setHud(false), hideMs);
-  }, [clearHudTimer, controlsLocked, episodeListOpen, paused, settingsOpen]);
+  }, [clearHudTimer, controlsLocked, episodeListOpen, isTV, paused, settingsOpen, uri]);
 
   const showTvHud = useCallback(() => {
     setHud(true);
-    if (Platform.isTV) scheduleHudHide();
-  }, [scheduleHudHide]);
+    if (isTV) scheduleHudHide();
+  }, [isTV, scheduleHudHide]);
 
   const flashSeekHint = useCallback((direction: 'back' | 'forward') => {
     if (!Platform.isTV) return;
@@ -519,13 +525,13 @@ export function PlayerScreen() {
   }, []);
 
   useEffect(() => {
-    if (!hud || settingsOpen || episodeListOpen || paused || controlsLocked) {
+    if (!isTV || !uri || !hud || settingsOpen || episodeListOpen || paused || controlsLocked) {
       clearHudTimer();
       return;
     }
     scheduleHudHide();
     return clearHudTimer;
-  }, [controlsLocked, episodeListOpen, hud, paused, scheduleHudHide, settingsOpen, clearHudTimer]);
+  }, [clearHudTimer, controlsLocked, episodeListOpen, hud, isTV, paused, scheduleHudHide, settingsOpen, uri]);
 
   // Show TV controls when playback begins.
   useEffect(() => {
@@ -680,34 +686,35 @@ export function PlayerScreen() {
       (evt) => {
         if (!isTV || settingsOpen || episodeListOpen || controlsLocked || !uri) return;
 
+        // HUD visible: native focus handles D-pad + Select on focused controls.
+        if (hud) {
+          if (evt.eventType === 'menu' || evt.eventType === 'back') {
+            setHud(false);
+          } else if (evt.eventType === 'playPause') {
+            setPaused((p) => !p);
+          }
+          return;
+        }
+
         switch (evt.eventType) {
           case 'playPause':
             setPaused((p) => !p);
             showTvHud();
             break;
           case 'left':
-            if (hud) seekBy(-10);
-            else {
-              seekBy(-10);
-            }
+            seekBy(-10);
             break;
           case 'right':
             seekBy(10);
             break;
           case 'up':
           case 'down':
-            showTvHud();
-            break;
           case 'select':
-            if (!hud) showTvHud();
+            showTvHud();
             break;
           case 'menu':
           case 'back':
-            if (hud) {
-              setHud(false);
-            } else {
-              navigation.goBack();
-            }
+            navigation.goBack();
             break;
           default:
             break;
@@ -905,8 +912,8 @@ export function PlayerScreen() {
           <View
             className="flex-1"
             style={
-              framedAspectRatio
-                ? { justifyContent: 'center', alignItems: 'center' }
+              framedAspectRatio || isTV
+                ? { justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }
                 : undefined
             }
           >
@@ -914,16 +921,20 @@ export function PlayerScreen() {
               style={
                 framedAspectRatio
                   ? { width: '100%', aspectRatio: framedAspectRatio, maxHeight: '100%' }
-                  : { flex: 1, alignSelf: 'stretch' }
+                  : isTV
+                    ? { width: '100%', height: '100%' }
+                    : { flex: 1, alignSelf: 'stretch' }
               }
             >
               <Video
                 ref={videoRef}
                 key={`${activeSource ? sourceSignature(activeSource) : 'no-source'}:${sourceIndex}:${playbackAttempt}`}
                 source={videoSource}
-                style={{ flex: 1 }}
+                style={isTV ? { width: '100%', height: '100%' } : { flex: 1 }}
                 viewType={Platform.OS === 'android' ? ViewType.TEXTURE : undefined}
-                resizeMode={isAndroidPhone ? playerResizeMode : 'cover'}
+                disableFocus={isTV}
+                focusable={!isTV}
+                resizeMode={isTV ? 'contain' : isAndroidPhone ? playerResizeMode : 'cover'}
                 paused={paused}
             rate={rate}
             volume={1}
@@ -971,7 +982,7 @@ export function PlayerScreen() {
             }}
             onError={onPlaybackError}
             onAspectRatio={
-              isAndroidPhone
+              isAndroidPhone || isTV
                 ? (e) => {
                     if (e.width > 0 && e.height > 0) {
                       setVideoNaturalSize({ width: e.width, height: e.height });
@@ -1072,6 +1083,47 @@ export function PlayerScreen() {
               </View>
             </Pressable>
           ) : null}
+
+          {isTV && uri && !controlsLocked ? (
+            <TVPlayerControls
+              visible={hud}
+              title={params.title}
+              episodeTitle={params.episodeTitle}
+              isTvEpisode={isTvEpisode}
+              season={params.season}
+              episode={params.episode}
+              paused={paused}
+              position={position}
+              duration={duration}
+              progress={progress}
+              bufferedProgress={bufferedProgress}
+              introEnd={introEnd}
+              tvNeighbors={tvNeighbors}
+              autoplayNextEpisode={autoplayNextEpisode}
+              nextPosterUri={nextPosterUri}
+              onClose={() => navigation.goBack()}
+              onTogglePlay={togglePlayback}
+              onSeekBack={() => seekBy(-10)}
+              onSeekForward={() => seekBy(10)}
+              onSeekRatio={seekRatio}
+              onScrubStart={onSeekStart}
+              onScrubEnd={onSeekEnd}
+              onOpenEpisodes={() => setEpisodeListOpen(true)}
+              onOpenSettings={openSettings}
+              onSkipIntro={() => seekTo(introEnd!)}
+              onPrevEpisode={() => tvNeighbors.prev && goToEpisodeRef(tvNeighbors.prev)}
+              onNextEpisode={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
+              onPlayNextNow={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
+              onDismissUpNext={() =>
+                navigation.setParams({ next: undefined } as Partial<PlayerRouteParams>)
+              }
+              onRequestShow={showTvHud}
+              formatDuration={formatDuration}
+              topPad={chromeTopPad}
+              bottomPad={chromeBottomPad}
+              horizontalPad={dockPadX}
+            />
+          ) : null}
         </View>
       ) : streamsLoading ? (
         <PlayerFetchSkeleton
@@ -1126,7 +1178,7 @@ export function PlayerScreen() {
             <FocusSurface
               onPress={() => navigation.navigate('Settings')}
               className="rounded-full bg-accent px-8 py-3.5 active:opacity-90 shadow-lg"
-              focusVariant="accent"
+              focusVariant="playerControl"
               hasTVPreferredFocus={isTV}
               accessibilityLabel="Open settings"
             >
@@ -1136,7 +1188,7 @@ export function PlayerScreen() {
             <FocusSurface
               onPress={() => omss.refetch()}
               className="rounded-full bg-accent px-8 py-3.5 active:opacity-90 shadow-lg"
-              focusVariant="accent"
+              focusVariant="playerControl"
               hasTVPreferredFocus={isTV}
               accessibilityLabel="Retry loading streams"
             >
@@ -1208,46 +1260,6 @@ export function PlayerScreen() {
             <Text className="text-white font-bold text-lg">10 sec</Text>
           </View>
         </View>
-      ) : null}
-
-      {isTV && uri && hud && !controlsLocked ? (
-        <TVPlayerControls
-          visible
-          title={params.title}
-          episodeTitle={params.episodeTitle}
-          isTvEpisode={isTvEpisode}
-          season={params.season}
-          episode={params.episode}
-          paused={paused}
-          position={position}
-          duration={duration}
-          progress={progress}
-          bufferedProgress={bufferedProgress}
-          introEnd={introEnd}
-          tvNeighbors={tvNeighbors}
-          autoplayNextEpisode={autoplayNextEpisode}
-          nextPosterUri={nextPosterUri}
-          onClose={() => navigation.goBack()}
-          onTogglePlay={togglePlayback}
-          onSeekBack={() => seekBy(-10)}
-          onSeekForward={() => seekBy(10)}
-          onSeekRatio={seekRatio}
-          onScrubStart={onSeekStart}
-          onScrubEnd={onSeekEnd}
-          onOpenEpisodes={() => setEpisodeListOpen(true)}
-          onOpenSettings={openSettings}
-          onSkipIntro={() => seekTo(introEnd!)}
-          onPrevEpisode={() => tvNeighbors.prev && goToEpisodeRef(tvNeighbors.prev)}
-          onNextEpisode={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
-          onPlayNextNow={() => tvNeighbors.next && goToEpisodeRef(tvNeighbors.next)}
-          onDismissUpNext={() =>
-            navigation.setParams({ next: undefined } as Partial<PlayerRouteParams>)
-          }
-          formatDuration={formatDuration}
-          topPad={chromeTopPad}
-          bottomPad={chromeBottomPad}
-          horizontalPad={dockPadX}
-        />
       ) : null}
 
       {(!Platform.isTV && hud && paused) || (!Platform.isTV && hud && !controlsLocked) ? (

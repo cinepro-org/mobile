@@ -1,10 +1,13 @@
 import React, { memo } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { PlayerProgressBar } from '@/player/PlayerProgressBar';
+import { TV_CONTROL_FOCUS_SCALE } from '@/tv/focusStyles';
+import { useOverlayInitialFocus } from '@/tv/useInitialTVFocus';
+import { useTVFocusHandle } from '@/tv/useTVFocusHandle';
 import { fontScale } from '@/utils/layout';
 
 type EpisodeNeighbors = {
@@ -42,11 +45,16 @@ type Props = {
   onNextEpisode: () => void;
   onPlayNextNow: () => void;
   onDismissUpNext: () => void;
+  onRequestShow: () => void;
   formatDuration: (sec: number) => string;
   topPad: number;
   bottomPad: number;
   horizontalPad: number;
 };
+
+const OVERLAY_Z = 20;
+const OVERLAY_ELEVATION = 20;
+const BTN = TV_CONTROL_FOCUS_SCALE;
 
 /**
  * Android TV player control overlay — large focusable transport controls,
@@ -82,12 +90,56 @@ export const TVPlayerControls = memo(function TVPlayerControls({
   onNextEpisode,
   onPlayNextNow,
   onDismissUpNext,
+  onRequestShow,
   formatDuration,
   topPad,
   bottomPad,
   horizontalPad,
 }: Props) {
-  if (!visible) return null;
+  const playFocus = useOverlayInitialFocus(visible);
+  const closeBtn = useTVFocusHandle();
+  const episodesBtn = useTVFocusHandle();
+  const skipIntroBtn = useTVFocusHandle();
+  const progressBar = useTVFocusHandle();
+  const prevBtn = useTVFocusHandle();
+  const seekBackBtn = useTVFocusHandle();
+  const playBtn = useTVFocusHandle();
+  const seekForwardBtn = useTVFocusHandle();
+  const nextBtn = useTVFocusHandle();
+  const settingsBtn = useTVFocusHandle();
+
+  const showSkipIntro = introEnd != null && introEnd > 0 && position < introEnd;
+  const showUpNext = Boolean(tvNeighbors.next && duration - position < 32);
+
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: OVERLAY_Z,
+    ...(Platform.OS === 'android' ? { elevation: OVERLAY_ELEVATION } : null),
+  };
+
+  const transportUp = progressBar.handle;
+  const topDown = showSkipIntro ? skipIntroBtn.handle : progressBar.handle;
+
+  // When the HUD is hidden, keep a tiny invisible focus anchor (not full-screen — that draws a giant oval).
+  if (!visible) {
+    return (
+      <View pointerEvents="box-none" style={overlayStyle}>
+        <FocusSurface
+          style={{ position: 'absolute', bottom: 0, left: 0, width: 2, height: 2, opacity: 0 }}
+          focusVariant="ghost"
+          focusedScale={1}
+          onPress={onRequestShow}
+          accessibilityLabel="Show playback controls"
+        >
+          <View />
+        </FocusSurface>
+      </View>
+    );
+  }
 
   const circleBtn = 56;
   const circleBtnLg = 76;
@@ -96,7 +148,7 @@ export const TVPlayerControls = memo(function TVPlayerControls({
   const bottomScrimH = 400;
 
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 6 }}>
+    <View pointerEvents="box-none" style={overlayStyle}>
       <LinearGradient
         pointerEvents="none"
         colors={['rgba(0,0,0,0.55)', 'transparent']}
@@ -122,10 +174,14 @@ export const TVPlayerControls = memo(function TVPlayerControls({
         }}
       >
         <FocusSurface
+          ref={closeBtn.ref}
           className="rounded-full items-center justify-center"
           style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-          focusVariant="onMedia"
+          focusVariant="playerControl"
+          focusedScale={BTN}
           onPress={onClose}
+          nextFocusRight={isTvEpisode ? episodesBtn.handle : undefined}
+          nextFocusDown={topDown}
           accessibilityLabel="Close player"
         >
           <Ionicons name="chevron-down" color="#fff" size={28} />
@@ -144,10 +200,14 @@ export const TVPlayerControls = memo(function TVPlayerControls({
 
         {isTvEpisode ? (
           <FocusSurface
+            ref={episodesBtn.ref}
             className="rounded-full items-center justify-center flex-row gap-2 px-5"
             style={{ height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="onMedia"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onOpenEpisodes}
+            nextFocusLeft={closeBtn.handle}
+            nextFocusDown={topDown}
             accessibilityLabel="Choose episode"
           >
             <Ionicons name="list" color="#fff" size={22} />
@@ -160,14 +220,25 @@ export const TVPlayerControls = memo(function TVPlayerControls({
 
       <View
         pointerEvents="box-none"
-        style={{ paddingBottom: bottomPad, paddingHorizontal: horizontalPad, position: 'absolute', left: 0, right: 0, bottom: 0, gap: 14 }}
+        style={{
+          paddingBottom: bottomPad,
+          paddingHorizontal: horizontalPad,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          gap: 14,
+        }}
       >
-        {introEnd != null && introEnd > 0 && position < introEnd ? (
+        {showSkipIntro ? (
           <FocusSurface
+            ref={skipIntroBtn.ref}
             className="self-center flex-row items-center gap-2 rounded-full px-7 py-3.5"
             style={{ backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="accent"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onSkipIntro}
+            nextFocusDown={progressBar.handle}
             accessibilityLabel="Skip intro"
           >
             <Ionicons name="play-forward" color="#fff" size={20} />
@@ -177,7 +248,7 @@ export const TVPlayerControls = memo(function TVPlayerControls({
           </FocusSurface>
         ) : null}
 
-        {tvNeighbors.next && duration - position < 32 ? (
+        {showUpNext ? (
           <View className="rounded-2xl overflow-hidden border border-accent/35 bg-black/55 mb-1">
             <View className="flex-row gap-3 p-3">
               <View className="w-[88px] h-[56px] rounded-xl overflow-hidden bg-white/10">
@@ -192,17 +263,29 @@ export const TVPlayerControls = memo(function TVPlayerControls({
                   Up next
                 </Text>
                 <Text className="text-white font-semibold" numberOfLines={2} style={{ fontSize: fontScale(15) }}>
-                  {tvNeighbors.next.episodeTitle ?? `Episode ${tvNeighbors.next.episode}`}
+                  {tvNeighbors.next!.episodeTitle ?? `Episode ${tvNeighbors.next!.episode}`}
                 </Text>
               </View>
             </View>
             <View className="flex-row border-t border-white/10">
-              <FocusSurface className="flex-1 py-3.5 border-r border-white/10" focusVariant="accent" onPress={onPlayNextNow}>
+              <FocusSurface
+                className="flex-1 py-3.5 border-r border-white/10"
+                focusVariant="playerOverlay"
+                focusedScale={BTN}
+                onPress={onPlayNextNow}
+                nextFocusDown={progressBar.handle}
+              >
                 <Text className="text-accent text-center font-bold" style={{ fontSize: fontScale(14) }}>
                   Play now
                 </Text>
               </FocusSurface>
-              <FocusSurface className="flex-1 py-3.5" focusVariant="subtle" onPress={onDismissUpNext}>
+              <FocusSurface
+                className="flex-1 py-3.5"
+                focusVariant="playerOverlay"
+                focusedScale={BTN}
+                onPress={onDismissUpNext}
+                nextFocusDown={progressBar.handle}
+              >
                 <Text className="text-white/70 text-center font-semibold" style={{ fontSize: fontScale(14) }}>
                   Dismiss
                 </Text>
@@ -230,16 +313,23 @@ export const TVPlayerControls = memo(function TVPlayerControls({
           onScrubStart={onScrubStart}
           onScrubEnd={onScrubEnd}
           formatDuration={formatDuration}
+          focusRef={progressBar.ref}
+          nextFocusUp={showSkipIntro ? skipIntroBtn.handle : closeBtn.handle}
+          nextFocusDown={playBtn.handle}
         />
 
         <View className="flex-row items-center justify-center gap-4 mt-1">
           {isTvEpisode ? (
             <FocusSurface
+              ref={prevBtn.ref}
               className={`rounded-full items-center justify-center ${!tvNeighbors.prev ? 'opacity-35' : ''}`}
               style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-              focusVariant="onMedia"
+              focusVariant="playerControl"
+              focusedScale={BTN}
               onPress={onPrevEpisode}
               disabled={!tvNeighbors.prev}
+              nextFocusRight={seekBackBtn.handle}
+              nextFocusUp={transportUp}
               accessibilityLabel="Previous episode"
             >
               <Ionicons name="play-skip-back" color="#fff" size={circleIcon} />
@@ -247,21 +337,32 @@ export const TVPlayerControls = memo(function TVPlayerControls({
           ) : null}
 
           <FocusSurface
+            ref={seekBackBtn.ref}
             className="rounded-full items-center justify-center"
             style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="onMedia"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onSeekBack}
+            nextFocusLeft={isTvEpisode && tvNeighbors.prev ? prevBtn.handle : undefined}
+            nextFocusRight={playBtn.handle}
+            nextFocusUp={transportUp}
             accessibilityLabel="Back 10 seconds"
           >
             <Ionicons name="play-back" color="#fff" size={circleIcon} />
           </FocusSurface>
 
           <FocusSurface
+            ref={playBtn.ref}
             className="rounded-full items-center justify-center"
             style={{ width: circleBtnLg, height: circleBtnLg, backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="accent"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onTogglePlay}
-            hasTVPreferredFocus
+            hasTVPreferredFocus={playFocus.hasTVPreferredFocus}
+            onFocus={playFocus.onInitialFocus}
+            nextFocusLeft={isTvEpisode && tvNeighbors.prev ? prevBtn.handle : seekBackBtn.handle}
+            nextFocusRight={seekForwardBtn.handle}
+            nextFocusUp={transportUp}
             accessibilityLabel={paused ? 'Play' : 'Pause'}
           >
             <Ionicons
@@ -273,10 +374,15 @@ export const TVPlayerControls = memo(function TVPlayerControls({
           </FocusSurface>
 
           <FocusSurface
+            ref={seekForwardBtn.ref}
             className="rounded-full items-center justify-center"
             style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="onMedia"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onSeekForward}
+            nextFocusLeft={playBtn.handle}
+            nextFocusRight={isTvEpisode && tvNeighbors.next ? nextBtn.handle : settingsBtn.handle}
+            nextFocusUp={transportUp}
             accessibilityLabel="Forward 10 seconds"
           >
             <Ionicons name="play-forward" color="#fff" size={circleIcon} />
@@ -284,11 +390,16 @@ export const TVPlayerControls = memo(function TVPlayerControls({
 
           {isTvEpisode ? (
             <FocusSurface
+              ref={nextBtn.ref}
               className={`rounded-full items-center justify-center ${!tvNeighbors.next ? 'opacity-35' : ''}`}
               style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-              focusVariant="onMedia"
+              focusVariant="playerControl"
+              focusedScale={BTN}
               onPress={onNextEpisode}
               disabled={!tvNeighbors.next}
+              nextFocusLeft={seekForwardBtn.handle}
+              nextFocusRight={settingsBtn.handle}
+              nextFocusUp={transportUp}
               accessibilityLabel="Next episode"
             >
               <Ionicons name="play-skip-forward" color="#fff" size={circleIcon} />
@@ -296,10 +407,14 @@ export const TVPlayerControls = memo(function TVPlayerControls({
           ) : null}
 
           <FocusSurface
+            ref={settingsBtn.ref}
             className="rounded-full items-center justify-center"
             style={{ width: circleBtn, height: circleBtn, backgroundColor: 'rgba(229,9,20,0.95)' }}
-            focusVariant="onMedia"
+            focusVariant="playerControl"
+            focusedScale={BTN}
             onPress={onOpenSettings}
+            nextFocusLeft={isTvEpisode && tvNeighbors.next ? nextBtn.handle : seekForwardBtn.handle}
+            nextFocusUp={transportUp}
             accessibilityLabel="Playback settings"
           >
             <Ionicons name="settings-outline" color="#fff" size={circleIcon} />

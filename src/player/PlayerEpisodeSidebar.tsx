@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, Modal, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -57,7 +57,7 @@ export function PlayerEpisodeSidebar({
             borderColor: active ? colors.accent : colors.playerHudBorder,
             backgroundColor: active ? colors.accentSoft : 'rgba(255,255,255,0.08)',
           }}
-          focusVariant={active ? 'accent' : 'subtle'}
+          focusVariant={active ? 'chipOnAccent' : 'playerOverlay'}
           hasTVPreferredFocus={visible && index === 0}
           onPress={() => onSelectEpisode(item.episode_number, item.name)}
           accessibilityLabel={`Episode ${item.episode_number} ${item.name}`}
@@ -101,7 +101,12 @@ export function PlayerEpisodeSidebar({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType={Platform.isTV ? 'fade' : 'slide'}
+      transparent
+      onRequestClose={onClose}
+    >
       <View className="flex-1 flex-row">
         <FocusSurface
           className="flex-1 bg-black/65"
@@ -132,7 +137,7 @@ export function PlayerEpisodeSidebar({
                 backgroundColor: 'rgba(255,255,255,0.12)',
                 borderColor: colors.playerHudBorder,
               }}
-              focusVariant="onMedia"
+              focusVariant="playerOverlay"
               onPress={onClose}
               accessibilityLabel="Close"
             >

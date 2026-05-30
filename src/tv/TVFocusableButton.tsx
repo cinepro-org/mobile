@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FocusSurface, type FocusSurfaceProps } from '@/tv/FocusSurface';
+import { TV_CONTROL_FOCUS_SCALE } from '@/tv/focusStyles';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { fontScale } from '@/utils/layout';
 
@@ -28,6 +29,7 @@ export const TVFocusableButton = forwardRef<View, Props>(function TVFocusableBut
     className,
     subtitle,
     focusVariant = 'default',
+    focusedScale = TV_CONTROL_FOCUS_SCALE,
     size = 'large',
     ...rest
   },
@@ -46,6 +48,7 @@ export const TVFocusableButton = forwardRef<View, Props>(function TVFocusableBut
       className={className ?? 'rounded-2xl flex-row items-center gap-3'}
       style={[{ paddingVertical: paddingV, paddingHorizontal: paddingH }, style]}
       focusVariant={focusVariant}
+      focusedScale={focusedScale}
       {...rest}
     >
       {icon ? <Ionicons name={icon} color={iconColor ?? colors.text} size={iconSize} /> : null}

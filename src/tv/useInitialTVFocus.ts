@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Android TV: `hasTVPreferredFocus` should apply only on first mount.
@@ -7,12 +7,39 @@ import { useCallback, useState } from 'react';
 export function useInitialTVFocus(enabled = true) {
   const [prefer, setPrefer] = useState(enabled);
 
-  const onFocus = useCallback(() => {
+  const onInitialFocus = useCallback(() => {
     setPrefer(false);
   }, []);
 
   return {
     hasTVPreferredFocus: enabled && prefer,
-    onInitialFocus: onFocus,
+    onInitialFocus,
+  };
+}
+
+/**
+ * Apply preferred focus once each time an overlay becomes visible (e.g. player HUD).
+ */
+export function useOverlayInitialFocus(visible: boolean, enabled = true) {
+  const [prefer, setPrefer] = useState(false);
+  const wasVisibleRef = useRef(false);
+
+  useEffect(() => {
+    if (visible && !wasVisibleRef.current && enabled) {
+      setPrefer(true);
+    }
+    if (!visible) {
+      setPrefer(false);
+    }
+    wasVisibleRef.current = visible;
+  }, [enabled, visible]);
+
+  const onInitialFocus = useCallback(() => {
+    setPrefer(false);
+  }, []);
+
+  return {
+    hasTVPreferredFocus: visible && enabled && prefer,
+    onInitialFocus,
   };
 }

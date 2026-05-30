@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, LayoutAnimation, Platform, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
 import { useLibraryStore, mediaStorageKey } from '@/store/libraryStore';
+import { configureSmoothLayoutAnimation } from '@/utils/motion';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { FocusSurface } from '@/tv/FocusSurface';
@@ -131,7 +132,7 @@ export function MovieDetailScreen() {
     d?.runtime != null ? `${Math.floor(d.runtime / 60)}h ${d.runtime % 60}m` : null;
 
   const toggleOverview = () => {
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    configureSmoothLayoutAnimation();
     setOverviewExpanded((v) => !v);
   };
 

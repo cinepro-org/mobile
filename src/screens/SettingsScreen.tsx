@@ -13,6 +13,7 @@ import { CINEPRO_ENV_BASE_URL } from '@/utils/env';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { useTV } from '@/hooks/useTV';
 import { useTVContentFocusLink } from '@/tv/useTVContentFocusLink';
+import { useTVFocusHandle } from '@/tv/useTVFocusHandle';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import type { ThemeMode } from '@/theme/colors';
 
@@ -74,6 +75,21 @@ export function SettingsScreen() {
   const { colors, isDark } = useAppTheme();
   const isTV = useTV();
   const { contentFocusRef, nextFocusLeft } = useTVContentFocusLink();
+  const darkTheme = useTVFocusHandle();
+  const lightTheme = useTVFocusHandle();
+  const tmdbInput = useTVFocusHandle();
+  const coreUrlInput = useTVFocusHandle();
+  const refreshBtn = useTVFocusHandle();
+  const applyBtn = useTVFocusHandle();
+  const autoQualityRow = useTVFocusHandle();
+  const autoplayRow = useTVFocusHandle();
+  const speed075 = useTVFocusHandle();
+  const speed1 = useTVFocusHandle();
+  const speed125 = useTVFocusHandle();
+  const speed15 = useTVFocusHandle();
+  const speed2 = useTVFocusHandle();
+  const wizardBtn = useTVFocusHandle();
+  const speedHandles = [speed075, speed1, speed125, speed15, speed2];
 
   const baseKey = cineproBaseUrl.trim();
   const health = useQuery({
@@ -143,6 +159,8 @@ export function SettingsScreen() {
       }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
+      focusable={false}
+      nestedScrollEnabled
     >
       <Text className="text-3xl font-bold mb-6" style={{ color: colors.text }}>
         Settings
@@ -151,11 +169,22 @@ export function SettingsScreen() {
       <Text className="text-xs mb-2" style={{ color: colors.textMuted }}>
         Appearance
       </Text>
-      <View className="flex-row gap-2 mb-6">
+      <View className="flex-row gap-2 mb-6" focusable={false}>
         {themeOptions.map((opt, index) => (
           <FocusSurface
             key={opt.id}
-            ref={isTV && index === 0 ? contentFocusRef : undefined}
+            ref={
+              isTV
+                ? (node) => {
+                    if (index === 0) {
+                      darkTheme.ref(node);
+                      contentFocusRef(node);
+                    } else {
+                      lightTheme.ref(node);
+                    }
+                  }
+                : undefined
+            }
             className="flex-1 rounded-2xl py-3.5 flex-row items-center justify-center gap-2 border"
             style={{
               backgroundColor: themeMode === opt.id ? colors.accent : colors.inputBg,
@@ -164,7 +193,9 @@ export function SettingsScreen() {
             focusVariant={themeMode === opt.id ? 'accent' : 'subtle'}
             hasTVPreferredFocus={isTV && index === 0}
             collapseTVNavOnFocus={isTV}
-            nextFocusLeft={isTV && index === 0 ? nextFocusLeft : undefined}
+            nextFocusLeft={isTV ? (index === 0 ? nextFocusLeft : darkTheme.handle) : undefined}
+            nextFocusRight={isTV ? (index === 0 ? lightTheme.handle : undefined) : undefined}
+            nextFocusDown={isTV ? tmdbInput.handle : undefined}
             onPress={() => setThemeMode(opt.id)}
             accessibilityLabel={`${opt.label} theme`}
             accessibilityState={{ selected: themeMode === opt.id }}
@@ -188,6 +219,7 @@ export function SettingsScreen() {
         TMDB API key
       </Text>
       <TextInput
+        ref={isTV ? tmdbInput.ref : undefined}
         value={tmdbApiKey}
         onChangeText={(t) => setTmdbKey(t)}
         placeholder="Paste API v3 key"
@@ -202,6 +234,12 @@ export function SettingsScreen() {
           color: colors.text,
         }}
         accessibilityLabel="TMDB API key"
+        {...(isTV
+          ? ({
+              nextFocusUp: darkTheme.handle,
+              nextFocusDown: coreUrlInput.handle,
+            } as const)
+          : {})}
       />
       <Text className="text-[11px] mb-6 leading-4" style={{ color: colors.textFaint }}>
         Stored only on this device. Catalog and artwork use TMDB; playback uses your Core URL below.
@@ -211,6 +249,7 @@ export function SettingsScreen() {
         CinePro Core base URL (OMSS)
       </Text>
       <TextInput
+        ref={isTV ? coreUrlInput.ref : undefined}
         value={cineproBaseUrl}
         onChangeText={(t) => setUrl(t)}
         placeholder={OMSS_URL_PLACEHOLDER}
@@ -223,6 +262,12 @@ export function SettingsScreen() {
           color: colors.text,
         }}
         accessibilityLabel="CinePro Core base URL"
+        {...(isTV
+          ? ({
+              nextFocusUp: tmdbInput.handle,
+              nextFocusDown: refreshBtn.handle,
+            } as const)
+          : {})}
       />
 
       <Text className="text-xs mb-2" style={{ color: colors.textMuted }}>
@@ -231,6 +276,7 @@ export function SettingsScreen() {
       <View
         className="rounded-2xl border px-4 py-3 mb-4 flex-row items-start gap-3"
         style={healthCardStyle(coreDetails.h?.status, coreDetails.failed, colors)}
+        focusable={false}
       >
         <View className={`w-10 h-10 rounded-xl items-center justify-center border shrink-0 ${iconBoxBorder}`}>
           <Ionicons
@@ -294,8 +340,13 @@ export function SettingsScreen() {
             </View>
           ) : null}
           <FocusSurface
+            ref={isTV ? refreshBtn.ref : undefined}
             className="mt-3 self-start rounded-lg px-3 py-2 flex-row items-center gap-2 border"
             style={{ backgroundColor: colors.inputBg, borderColor: colors.border }}
+            focusVariant="subtle"
+            collapseTVNavOnFocus={isTV}
+            nextFocusUp={isTV ? coreUrlInput.handle : undefined}
+            nextFocusDown={isTV ? applyBtn.handle : undefined}
             onPress={() => void health.refetch()}
             accessibilityLabel="Refresh Core status"
           >
@@ -308,8 +359,13 @@ export function SettingsScreen() {
       </View>
 
       <FocusSurface
+        ref={isTV ? applyBtn.ref : undefined}
         className="self-start rounded-xl px-4 py-2 mb-10"
         style={{ backgroundColor: colors.accent }}
+        focusVariant="control"
+        collapseTVNavOnFocus={isTV}
+        nextFocusUp={isTV ? refreshBtn.handle : undefined}
+        nextFocusDown={isTV ? autoQualityRow.handle : undefined}
         onPress={() => {
           void queryClient.invalidateQueries({ queryKey: ['omss'] });
           void queryClient.invalidateQueries({ queryKey: ['tmdb'] });
@@ -322,22 +378,35 @@ export function SettingsScreen() {
       </FocusSurface>
 
       <FocusSurface
+        ref={isTV ? autoQualityRow.ref : undefined}
         className="flex-row items-center justify-between py-3 border-t"
         style={{ borderColor: colors.border }}
         focusVariant="subtle"
+        collapseTVNavOnFocus={isTV}
+        nextFocusUp={isTV ? applyBtn.handle : undefined}
+        nextFocusDown={isTV ? autoplayRow.handle : undefined}
         onPress={() => setAutoQuality(!autoQuality)}
         accessibilityLabel="Toggle auto quality"
       >
         <Text className="text-base flex-1 pr-4" style={{ color: colors.text }}>
           Auto quality selection
         </Text>
-        <Switch value={autoQuality} pointerEvents="none" accessibilityLabel="Toggle auto quality" />
+        <Switch
+          value={autoQuality}
+          pointerEvents="none"
+          focusable={false}
+          accessibilityLabel="Toggle auto quality"
+        />
       </FocusSurface>
 
       <FocusSurface
+        ref={isTV ? autoplayRow.ref : undefined}
         className="flex-row items-center justify-between py-3 border-t"
         style={{ borderColor: colors.border }}
         focusVariant="subtle"
+        collapseTVNavOnFocus={isTV}
+        nextFocusUp={isTV ? autoQualityRow.handle : undefined}
+        nextFocusDown={isTV ? speed075.handle : undefined}
         onPress={() => setAutoplayNextEpisode(!autoplayNextEpisode)}
         accessibilityLabel="Toggle autoplay next episode"
       >
@@ -347,26 +416,36 @@ export function SettingsScreen() {
         <Switch
           value={autoplayNextEpisode}
           pointerEvents="none"
+          focusable={false}
           accessibilityLabel="Toggle autoplay next episode"
         />
       </FocusSurface>
 
-      <View className="py-4 border-t" style={{ borderColor: colors.border }}>
+      <View className="py-4 border-t" style={{ borderColor: colors.border }} focusable={false}>
         <Text className="text-base mb-2" style={{ color: colors.text }}>
           Default playback speed
         </Text>
         <Text className="text-xs mb-3" style={{ color: colors.textMuted }}>
           {[0.75, 1, 1.25, 1.5, 2].map((r) => `${r}x`).join(' · ')}
         </Text>
-        <View className="flex-row flex-wrap gap-2">
-          {[0.75, 1, 1.25, 1.5, 2].map((r) => (
+        <View className="flex-row flex-wrap gap-2" focusable={false}>
+          {[0.75, 1, 1.25, 1.5, 2].map((r, index) => (
             <FocusSurface
               key={r}
+              ref={isTV ? speedHandles[index]?.ref : undefined}
               className="rounded-full px-4 py-2 border"
               style={{
                 backgroundColor: defaultPlaybackRate === r ? colors.accent : colors.inputBg,
                 borderColor: defaultPlaybackRate === r ? colors.accent : colors.border,
               }}
+              focusVariant={defaultPlaybackRate === r ? 'accent' : 'subtle'}
+              collapseTVNavOnFocus={isTV}
+              nextFocusLeft={isTV && index > 0 ? speedHandles[index - 1]?.handle : undefined}
+              nextFocusRight={
+                isTV && index < speedHandles.length - 1 ? speedHandles[index + 1]?.handle : undefined
+              }
+              nextFocusUp={isTV ? autoplayRow.handle : undefined}
+              nextFocusDown={isTV && index === speedHandles.length - 1 ? wizardBtn.handle : undefined}
               onPress={() => setRate(r)}
               accessibilityLabel={`Playback speed ${r}`}
             >
@@ -382,8 +461,12 @@ export function SettingsScreen() {
       </View>
 
       <FocusSurface
+        ref={isTV ? wizardBtn.ref : undefined}
         className="self-start rounded-xl border px-4 py-3 mb-8 mt-2"
         style={{ backgroundColor: colors.inputBg, borderColor: colors.border }}
+        focusVariant="subtle"
+        collapseTVNavOnFocus={isTV}
+        nextFocusUp={isTV ? speed2.handle : undefined}
         onPress={() =>
           Alert.alert(
             'Run setup again?',

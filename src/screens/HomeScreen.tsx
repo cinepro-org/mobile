@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAppNavigation } from '@/navigation/useAppNavigation';
@@ -15,6 +15,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useHasConfiguredTmdbKey } from '@/utils/tmdbCredentials';
 import { FocusSurface } from '@/tv/FocusSurface';
 import { TVHomeHero } from '@/tv/TVHomeHero';
+import { TVGenreChipRow } from '@/tv/TVGenreChipRow';
 import { TVMediaRow } from '@/tv/TVMediaRow';
 import { TVContentArea } from '@/tv/TVContentArea';
 import { useTV } from '@/hooks/useTV';
@@ -137,7 +138,13 @@ export function HomeScreen() {
 
   const hp = Math.max(overscanX, 16);
   const belowHeroFocus = useTVFocusHandle();
+  const genreFirstChip = useTVFocusHandle();
+  const [genreDownHandle, setGenreDownHandle] = useState<number | undefined>();
+  const [heroPlayFocusHandle, setHeroPlayFocusHandle] = useState<number | undefined>();
   const linkRowBelowHero = !genreChips.length && hasTmdb;
+  const heroDownFocusHandle = genreChips.length
+    ? genreDownHandle ?? genreFirstChip.handle
+    : belowHeroFocus.handle;
 
   if (isTV) {
     return (
@@ -160,7 +167,8 @@ export function HomeScreen() {
             items={heroItems}
             onOpenActive={onOpenHero}
             onPlayActive={onPlayHero}
-            downFocusHandle={belowHeroFocus.handle}
+            downFocusHandle={heroDownFocusHandle}
+            onPlayFocusHandle={setHeroPlayFocusHandle}
           />
 
           {!hasTmdb ? (
@@ -177,36 +185,19 @@ export function HomeScreen() {
               <ThemedText variant="title" className="text-xl mb-4">
                 Browse by genre
               </ThemedText>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                focusable={false}
-                nestedScrollEnabled
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {genreChips.map((item: TmdbGenre, index: number) => (
-                  <FocusSurface
-                    key={item.id}
-                    ref={index === 0 ? belowHeroFocus.ref : undefined}
-                    className="rounded-full px-6 py-3"
-                    style={ts.chip}
-                    focusVariant="subtle"
-                    collapseTVNavOnFocus
-                    onPress={() =>
-                      navigation.navigate('Genre', {
-                        genreId: item.id,
-                        genreName: item.name,
-                        mediaType: 'movie',
-                      })
-                    }
-                    accessibilityLabel={`Genre ${item.name}`}
-                  >
-                    <Text className="text-sm font-semibold" style={{ color: colors.text }}>
-                      {item.name}
-                    </Text>
-                  </FocusSurface>
-                ))}
-              </ScrollView>
+              <TVGenreChipRow
+                chips={genreChips}
+                onSelect={(chip) =>
+                  navigation.navigate('Genre', {
+                    genreId: chip.id,
+                    genreName: chip.name,
+                    mediaType: 'movie',
+                  })
+                }
+                linkFirstChipRef={genreFirstChip.ref}
+                onFirstChipHandleReady={setGenreDownHandle}
+                nextFocusUp={heroPlayFocusHandle}
+              />
             </View>
           ) : null}
 

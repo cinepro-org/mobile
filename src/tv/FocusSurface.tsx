@@ -1,13 +1,16 @@
 import React, { forwardRef, useMemo, useState } from 'react';
 import { Pressable, PressableProps, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
+  Extrapolation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import { focusedRingStyle, idleBorderStyle, TV_FOCUS_SCALE, type FocusVariant } from '@/tv/focusStyles';
 import { useTVNavigationOptional } from '@/tv/TVNavigationContext';
+import { MOTION_DURATION, motionTiming } from '@/utils/motion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -49,7 +52,7 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
 ) {
   const { colors } = useAppTheme();
   const tvNav = useTVNavigationOptional();
-  const focused = useSharedValue(0);
+  const focusProgress = useSharedValue(0);
   const [isFocused, setIsFocused] = useState(false);
 
   const idleStyle = useMemo(
@@ -65,10 +68,7 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
   const anim = useAnimatedStyle(() => ({
     transform: [
       {
-        scale: withSpring(focused.value > 0.5 ? focusedScale : 1, {
-          damping: 18,
-          stiffness: 220,
-        }),
+        scale: interpolate(focusProgress.value, [0, 1], [1, focusedScale], Extrapolation.CLAMP),
       },
     ],
   }));
@@ -78,15 +78,15 @@ export const FocusSurface = forwardRef<View, FocusSurfaceProps>(function FocusSu
       ref={ref as never}
       accessibilityRole="button"
       hasTVPreferredFocus={hasTVPreferredFocus}
-      style={[idleStyle, ringStyle, anim, style as StyleProp<ViewStyle>]}
+      style={[idleStyle, style as StyleProp<ViewStyle>, ringStyle, anim]}
       onFocus={(e) => {
-        focused.value = 1;
+        focusProgress.value = withTiming(1, motionTiming(MOTION_DURATION.fast));
         setIsFocused(true);
         if (collapseTVNavOnFocus) tvNav?.registerContentFocus();
         onFocus?.(e);
       }}
       onBlur={(e) => {
-        focused.value = 0;
+        focusProgress.value = withTiming(0, motionTiming(MOTION_DURATION.fast));
         setIsFocused(false);
         onBlur?.(e);
       }}

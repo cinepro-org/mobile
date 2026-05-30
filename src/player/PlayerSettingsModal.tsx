@@ -179,7 +179,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                 backgroundColor: 'rgba(255,255,255,0.14)',
                 borderColor: colors.playerHudBorder,
               }}
-              focusVariant="onMedia"
+              focusVariant="playerOverlay"
               hasTVPreferredFocus={Platform.isTV}
               accessibilityLabel="Close settings"
               hitSlop={isAndroidPhone ? { top: 8, bottom: 8, left: 8, right: 8 } : undefined}
@@ -205,6 +205,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                   onPress={() => onRateChange(r)}
                   className={`rounded-2xl min-w-[72px] items-center justify-center ${rateChipPad}`}
                   style={rate === r ? chipActive : chipIdle}
+                  focusVariant={rate === r ? 'chipOnAccent' : 'chip'}
                 >
                   <Text className="font-bold text-[15px]" style={{ color: colors.playerHudText }}>
                     {r}x
@@ -217,6 +218,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               onPress={() => setVideoExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} flex-row items-center justify-between ${videoExpanded ? 'mb-2' : 'mb-4'}`}
               style={rowStyle}
+              focusVariant="playerOverlay"
               accessibilityRole="button"
               accessibilityState={{ expanded: videoExpanded }}
             >
@@ -238,6 +240,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                   className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between ${
                     preferredVideoIdx < 0 ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                   }`}
+                  focusVariant={preferredVideoIdx < 0 ? 'chipOnAccent' : 'playerOverlay'}
                 >
                   <Text className="text-white font-semibold text-[15px]">Auto (adaptive)</Text>
                   {preferredVideoIdx < 0 ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
@@ -249,6 +252,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
                       preferredVideoIdx === i ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                     }`}
+                    focusVariant={preferredVideoIdx === i ? 'chipOnAccent' : 'playerOverlay'}
                   >
                     <Text className="text-white font-medium text-[15px] flex-1">
                       {vt.height ? `${vt.height}p` : 'Video'}{' '}
@@ -266,6 +270,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
             <FocusSurface
               onPress={() => setAudioExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${audioExpanded ? 'mb-2' : 'mb-4'}`}
+              focusVariant="playerOverlay"
             >
               <View className="flex-row items-center gap-3 flex-1">
                 <Ionicons name="mic-outline" color="rgba(255,255,255,0.55)" size={20} />
@@ -287,6 +292,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
                       audioSafeIdx === i ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                     }`}
+                    focusVariant={audioSafeIdx === i ? 'chipOnAccent' : 'playerOverlay'}
                   >
                     <Text className="text-white font-medium text-[15px] flex-1" numberOfLines={2}>
                       {[at.title, at.language].filter(Boolean).join(' · ') || `Track ${i + 1}`}
@@ -303,6 +309,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
             <FocusSurface
               onPress={() => setCaptionsExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${captionsExpanded ? 'mb-2' : 'mb-4'}`}
+              focusVariant="playerOverlay"
               accessibilityRole="button"
               accessibilityState={{ expanded: captionsExpanded }}
               accessibilityLabel="Captions options"
@@ -329,6 +336,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                   className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between ${
                     subtitleTrack < 0 ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                   }`}
+                  focusVariant={subtitleTrack < 0 ? 'chipOnAccent' : 'playerOverlay'}
                 >
                   <Text className="text-white font-semibold text-[15px]">Off</Text>
                   {subtitleTrack < 0 ? <Ionicons name="checkmark-circle" color="#fff" size={22} /> : null}
@@ -340,6 +348,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
                       subtitleTrack === idx ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                     }`}
+                    focusVariant={subtitleTrack === idx ? 'chipOnAccent' : 'playerOverlay'}
                   >
                     <Text className="text-white font-medium text-[15px] flex-1" numberOfLines={2}>
                       {t.title}
@@ -356,6 +365,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
             <FocusSurface
               onPress={() => setStreamExpanded((v) => !v)}
               className={`rounded-2xl ${tapRow} border border-white/14 bg-white/6 flex-row items-center justify-between active:bg-white/12 ${streamExpanded ? 'mb-2' : 'mb-4'}`}
+              focusVariant="playerOverlay"
               accessibilityRole="button"
               accessibilityState={{ expanded: streamExpanded }}
             >
@@ -382,6 +392,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
                     className={`rounded-2xl ${tapRow} mb-2 border flex-row items-center justify-between gap-3 ${
                       idx === sourceIndex ? 'bg-accent/95 border-accent' : 'bg-white/8 border-white/12 active:bg-white/14'
                     }`}
+                    focusVariant={idx === sourceIndex ? 'chipOnAccent' : 'playerOverlay'}
                   >
                     <View className="flex-1">
                       <Text className="text-white font-bold text-[15px]">
@@ -403,6 +414,7 @@ export function PlayerSettingsModal(props: PlayerSettingsModalProps) {
               onPress={onMarkIntroEnd}
               className={`${isAndroidPhone ? 'py-5' : ''} mb-10`}
               style={pillStyle}
+              focusVariant="playerOverlay"
             >
               <Text className="text-white font-bold text-[15px]">Mark intro end here</Text>
               <Text className="text-white/48 text-[13px] mt-1.5 leading-[19px]">
